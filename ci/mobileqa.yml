@@ -1,0 +1,153 @@
+# Drop this file into .github/workflows/ of the APP repo.
+#
+# What it does on every push to main / every PR / every release tag / nightly:
+#   1. builds an installable test binary (Android APK on Linux, iOS simulator .app on macOS)
+#   2. boots an emulator/simulator and an Appium server
+#   3. runs `mobileqa ci` — replays the stored regression suite, then explores for new ground
+#   4. uploads the HTML report + JUnit, commits the grown suite back, and FAILS the job
+#      (blocking the release workflow) when the gate trips.
+#
+# Secrets to set once (repo → Settings → Secrets → Actions):
+#   ANTHROPIC_API_KEY   the tester's brain
+#   EXPO_TOKEN          (Expo/EAS apps) for `eas build --local`
+#   QA_EMAIL / QA_PASSWORD   a throwaway test account for the app, if it has login
+#   MOBILEQA_SLACK_WEBHOOK   optional
+#
+# Adjust the two "BUILD" steps for non-Expo apps (gradle assembleDebug / xcodebuild -sdk iphonesimulator).
+
+name: Mobile QA agent
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  schedule:
+    - cron: "17 7 * * *"        # nightly — the "app has to work on its own" run
+  workflow_dispatch:
+    inputs:
+      steps:
+        description: exploration budget (actions)
+        default: "400"
+
+env:
+  MOBILEQA_REPO: https://github.com/manan99991/mobileqa   # where the agent lives
+  QA_EMAIL: ${{ secrets.QA_EMAIL }}
+  QA_PASSWORD: ${{ secrets.QA_PASSWORD }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  MOBILEQA_SLACK_WEBHOOK: ${{ secrets.MOBILEQA_SLACK_WEBHOOK }}
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: Install app deps
+        run: npm ci
+
+      # ---- BUILD (Expo/EAS). For native Android use: ./gradlew assembleDebug
+      - name: Build Android APK (EAS local, preview profile)
+        env: { EXPO_TOKEN: "${{ secrets.EXPO_TOKEN }}" }
+        run: npx eas-cli@latest build --platform android --profile preview --local --non-interactive --output ./qa-build.apk
+
+      - name: Install mobileqa + Appium
+        run: |
+          pip install "git+${MOBILEQA_REPO}"
+          npm install -g appium
+          appium driver install uiautomator2
+          nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+
+      - name: Run the QA agent on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb wait-for-device
+            mobileqa doctor qa/app.android.yaml || true
+            mobileqa ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 400 }}
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: mobileqa-android-report, path: reports/, retention-days: 30 }
+
+      - name: Publish JUnit summary
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with: { report_paths: reports/**/junit.xml, check_name: "Mobile QA (Android)" }
+
+      - name: Commit the grown suite
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          git config user.name "mobileqa-bot" && git config user.email "mobileqa@users.noreply.github.com"
+          git add qa/suite && git diff --cached --quiet || git commit -m "qa: suite grown by mobileqa run ${{ github.run_number }}" && git push
+
+  ios:
+    runs-on: macos-14
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: npm ci
+
+      # ---- BUILD (Expo/EAS). Needs an eas.json profile "qa-simulator" with ios.simulator: true.
+      # For native iOS: xcodebuild -scheme App -sdk iphonesimulator -configuration Debug -derivedDataPath build
+      - name: Build iOS simulator app (EAS local)
+        env: { EXPO_TOKEN: "${{ secrets.EXPO_TOKEN }}" }
+        run: |
+          npx eas-cli@latest build --platform ios --profile qa-simulator --local --non-interactive --output ./qa-build.tar.gz
+          mkdir -p qa-build && tar -xzf qa-build.tar.gz -C qa-build
+          echo "APP_PATH=$(find $PWD/qa-build -name '*.app' -maxdepth 2 | head -1)" >> $GITHUB_ENV
+
+      - name: Install mobileqa + Appium + simulator
+        run: |
+          pip install "git+${MOBILEQA_REPO}"
+          npm install -g appium
+          appium driver install xcuitest
+          nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
+          UDID=$(xcrun simctl create "qa-iphone" "iPhone 15" | tail -1)
+          xcrun simctl boot "$UDID"
+          echo "SIM_UDID=$UDID" >> $GITHUB_ENV
+
+      - name: Run the QA agent on the simulator
+        run: |
+          mobileqa doctor qa/app.ios.yaml || true
+          mobileqa ci qa/app.ios.yaml --steps ${{ github.event.inputs.steps || 400 }}
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: mobileqa-ios-report, path: reports/, retention-days: 30 }
+      - name: Publish JUnit summary
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with: { report_paths: reports/**/junit.xml, check_name: "Mobile QA (iOS)" }
+      - name: Commit the grown suite
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          git config user.name "mobileqa-bot" && git config user.email "mobileqa@users.noreply.github.com"
+          git pull --rebase || true
+          git add qa/suite && git diff --cached --quiet || git commit -m "qa: iOS suite grown by mobileqa run ${{ github.run_number }}" && git push

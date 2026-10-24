@@ -1,0 +1,7 @@
+Appium-Python-Client>=4.0
+anthropic>=0.40
+pyyaml>=6
+requests>=2.31
+pillow>=10
+jinja2>=3.1
+pytest>=8

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ app }} — QA run {{ run_id }}</title>
+<style>
+  :root { --bg:#fff; --fg:#1b1b1f; --mut:#6b6f76; --line:#e4e6ea; --card:#f7f8fa;
+          --crit:#b3261e; --high:#d9480f; --med:#b08900; --low:#2f6fed; --ok:#1e8e3e; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111317; --fg:#e8eaed; --mut:#9aa0a6; --line:#2a2d33; --card:#1a1d23; } }
+  body { margin:0; padding:24px 16px; font:15px/1.5 -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--fg); max-width:1100px; margin:auto; }
+  h1 { font-size:24px; margin:0 0 4px; } h2 { font-size:18px; margin:32px 0 12px; } .mut { color:var(--mut); }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin:18px 0; }
+  .tile { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .tile b { display:block; font-size:26px; }
+  .sev { display:inline-block; padding:1px 8px; border-radius:10px; color:#fff; font-size:12px; font-weight:600; text-transform:uppercase; }
+  .critical{background:var(--crit)} .high{background:var(--high)} .medium{background:var(--med)} .low{background:var(--low)} .info{background:var(--mut)}
+  .pass{background:var(--ok)} .fixed{background:var(--ok)} .healed{background:var(--low)} .fail,.still_failing,.error{background:var(--crit)}
+  table { width:100%; border-collapse:collapse; font-size:14px; } td,th { padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left; }
+  details { margin:6px 0; } summary { cursor:pointer; }
+  img.shot { max-height:260px; border:1px solid var(--line); border-radius:6px; margin:4px; }
+  .shots { display:flex; flex-wrap:wrap; gap:4px; }
+  .verdict { font-size:20px; font-weight:700; padding:12px 16px; border-radius:8px; display:inline-block; color:#fff; }
+  code { background:var(--card); padding:1px 5px; border-radius:4px; font-size:13px; }
+  ol.repro { margin:4px 0; padding-left:20px; }
+</style>
+</head>
+<body>
+<h1>{{ app }} <span class="mut">· {{ platform }} · run {{ run_id }}</span></h1>
+<div class="mut">{{ started }} · {{ summary.duration_s }}s · {{ mode }}</div>
+
+<p><span class="verdict {{ 'fail' if gate_failed else 'pass' }}">{{ 'RELEASE BLOCKED' if gate_failed else 'RELEASE OK' }}</span>
+  <span class="mut">gate: fail on {{ fail_on|join(', ') }}</span></p>
+
+<div class="tiles">
+  <div class="tile"><b>{{ summary.steps }}</b>actions performed</div>
+  <div class="tile"><b>{{ summary.screens }}</b>screens found</div>
+  <div class="tile"><b>{{ summary.coverage_pct }}%</b>elements exercised</div>
+  <div class="tile"><b>{{ summary.critical }}</b><span class="sev critical">critical</span></div>
+  <div class="tile"><b>{{ summary.high }}</b><span class="sev high">high</span></div>
+  <div class="tile"><b>{{ summary.medium }}</b><span class="sev medium">medium</span></div>
+  <div class="tile"><b>{{ summary.low }}</b><span class="sev low">low</span></div>
+  {% if replay %}<div class="tile"><b>{{ replay.pass + replay.healed + replay.fixed }}/{{ replay.total }}</b>regression cases pass</div>{% endif %}
+  {% if suite %}<div class="tile"><b>{{ suite.total }}</b>cases in suite (+{{ added }} new)</div>{% endif %}
+</div>
+
+<h2>Findings ({{ findings|length }})</h2>
+<table>
+<tr><th>Sev</th><th>Category</th><th>What</th><th>Screen</th><th>Source</th></tr>
+{% for f in findings %}
+<tr>
+  <td><span class="sev {{ f.severity }}">{{ f.severity }}</span></td>
+  <td>{{ f.category }}</td>
+  <td><b>{{ f.title }}</b><br><span class="mut">{{ f.detail }}</span>
+    {% if f.repro %}<details><summary>Steps to reproduce</summary><ol class="repro">{% for r in f.repro %}<li>{{ r }}</li>{% endfor %}</ol></details>{% endif %}
+    {% if f.evidence.screenshot %}<details><summary>Screenshot</summary><img class="shot" src="{{ f.evidence.screenshot }}" loading="lazy"></details>{% endif %}
+    {% if f.evidence.url %}<div><code>{{ f.evidence.url }}</code> → {{ f.evidence.status }} {{ f.evidence.note }}</div>{% endif %}
+  </td>
+  <td>{{ f.screen_name }}</td>
+  <td class="mut">{{ f.source }}</td>
+</tr>
+{% endfor %}
+</table>
+
+{% if replay %}
+<h2>Regression suite replay</h2>
+<table>
+<tr><th>Result</th><th>Case</th><th>Kind</th><th>Note</th></tr>
+{% for r in replay_results %}
+<tr><td><span class="sev {{ r.result }}">{{ r.result }}</span></td><td>{{ r.name }}</td><td>{{ r.kind }}</td><td class="mut">{{ r.message }}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+
+<h2>Screens explored ({{ screens|length }})</h2>
+<div class="shots">
+{% for s in screens %}
+  <figure style="margin:4px;text-align:center">
+    {% if s.screenshot %}<img class="shot" src="{{ s.screenshot }}" loading="lazy"><br>{% endif %}
+    <figcaption><b>{{ s.name }}</b><br><span class="mut">{{ s.done }}/{{ s.total }} elements · {{ s.visits }} visits</span></figcaption>
+  </figure>
+{% endfor %}
+</div>
+
+<h2>Links checked ({{ links|length }})</h2>
+<table><tr><th>URL</th><th>Status</th><th>Note</th><th>Seen on</th></tr>
+{% for u, l in links.items() %}
+<tr><td><code>{{ u }}</code></td><td>{{ l.status if l.status is not none else 'unreachable' }}</td><td class="mut">{{ l.note }}</td><td class="mut">{{ l.screens|join(', ') }}</td></tr>
+{% endfor %}
+</table>
+
+<h2>Every action</h2>
+<details><summary>{{ steps|length }} steps</summary>
+<table><tr><th>#</th><th>Screen</th><th>Action</th><th>→</th><th>ms</th></tr>
+{% for s in steps %}
+<tr><td>{{ s.step }}</td><td>{{ s.screen_before_name }}</td><td>{{ s.action_text }}</td><td>{{ s.screen_after_name }}</td><td class="mut">{{ s.duration_ms }}</td></tr>
+{% endfor %}
+</table></details>
+<p class="mut" style="margin-top:40px">mobileqa · model {{ model }} · {{ llm_calls }} model calls</p>
+</body></html>

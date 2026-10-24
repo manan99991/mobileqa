@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mobileqa"
+version = "0.1.0"
+description = "Autonomous human-like end-to-end tester for iOS and Android apps. Explores, gestures, checks UI/UX/values/links, grows its own regression suite."
+requires-python = ">=3.10"
+dependencies = [
+    "Appium-Python-Client>=4.0",
+    "anthropic>=0.40",
+    "pyyaml>=6",
+    "requests>=2.31",
+    "pillow>=10",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+mobileqa = "mobileqa.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["mobileqa*"]
+
+[tool.setuptools.package-data]
+mobileqa = ["templates/*.j2", "ci/*"]

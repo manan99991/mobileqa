@@ -1,0 +1,43 @@
+# Tenzy — Android. Package com.tenzy.app.
+# Build the test binary:   npx eas-cli build --platform android --profile preview --local --output qa-build.apk
+app:
+  name: Tenzy
+  path: ${TENZY_APK}            # e.g. ./qa-build.apk ; blank if already installed on the device
+  package: com.tenzy.app
+  activity: ""                    # Expo default MainActivity is auto-detected
+  login: {}                       # no accounts in Reckato
+  base_urls:
+    - https://manan99991.github.io/tenzy/
+    - https://manan99991.github.io/tenzy/privacy.html
+  allow_destructive: false
+  forbidden_texts: ["Subscribe", "Start free trial", "Buy", "Restore purchases", "Rate", "Send feedback", "Delete"]
+  goals:
+    - "Open every tool on all three pages (everyday, helpful, AI) and use each once with sensible input"
+    - "Free tier: the ~8 basic utilities work without Pro; AI and output tools show the Pro paywall, never a blank screen"
+    - "Paywall shows $19.99/year, 3-day free trial, auto-renew and cancel terms; 'free' never appears without 'optional Pro subscription'"
+    - "Every screen, modal and sub-screen has a visible Back or Done (store-review dead-end check)"
+    - "Ads: an ad slot never covers a control; the app still works if the ad fails to load"
+    - "Privacy policy and every external link open and are not 404"
+    - "Rotate to landscape in two tools; nothing clipped; state kept"
+    - "Background the app mid-tool and come back: input is preserved"
+    - "Flashlight strobe/SOS and any timer-based tool stop cleanly when leaving the screen"
+  known_issues: []
+
+device:
+  platform: android
+  name: Pixel_6_API_34
+  appium_url: ${APPIUM_URL:-http://127.0.0.1:4723}
+  extra_caps:
+    appium:autoGrantPermissions: false
+
+run:
+  max_steps: 500
+  max_minutes: 60
+  check_links: true
+  check_values: true
+  check_a11y: true
+  check_vision: true
+  model: claude-sonnet-5-5
+  suite_dir: qa/suite/android
+  report_dir: reports
+  fail_on: [critical, high]

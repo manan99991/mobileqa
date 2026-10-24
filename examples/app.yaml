@@ -1,0 +1,43 @@
+# Reckato — Android. Repo: manan99991/app-calculator (Expo). Package com.reckato.app.
+# Build the test binary:   npx eas-cli build --platform android --profile preview --local --output qa-build.apk
+app:
+  name: Reckato
+  path: ${RECKATO_APK}            # e.g. ./qa-build.apk ; blank if already installed on the device
+  package: com.reckato.app
+  activity: ""                    # Expo default MainActivity is auto-detected
+  login: {}                       # no accounts in Reckato
+  base_urls:
+    - https://reckato.app
+  allow_destructive: false
+  forbidden_texts: ["Purchase", "Subscribe", "Buy", "Restore purchases", "Rate", "Send feedback"]
+  goals:
+    - "Open the standard keypad, enter 12.5 × 8 = and confirm the result reads 100"
+    - "Open every tool in the menu (all 34), use it once with sensible input, and check the answer is arithmetically right"
+    - "Unit converter: convert 10 km to miles and confirm 6.21"
+    - "Currency converter works offline (airplane mode) and shows a last-updated date"
+    - "Local tax: pick a place, enter an amount, verify tax = amount × rate shown"
+    - "Every screen, modal and sub-screen has a visible Back or Done (store-review dead-end check)"
+    - "Every external link opens and is not a 404 (sources pages, privacy policy, website)"
+    - "Switch each theme in Settings and confirm text stays readable (contrast)"
+    - "Rotate to landscape on the keypad and a form calculator; nothing clipped"
+    - "Pro paywall: shows price, renewal terms, trial and cancel info; the word 'free' never appears without 'optional Pro'"
+  known_issues: []
+
+device:
+  platform: android
+  name: Pixel_6_API_34
+  appium_url: ${APPIUM_URL:-http://127.0.0.1:4723}
+  extra_caps:
+    appium:autoGrantPermissions: false
+
+run:
+  max_steps: 500
+  max_minutes: 60
+  check_links: true
+  check_values: true
+  check_a11y: true
+  check_vision: true
+  model: claude-sonnet-5-5
+  suite_dir: qa/suite/android
+  report_dir: reports
+  fail_on: [critical, high]
