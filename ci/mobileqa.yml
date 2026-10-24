@@ -96,11 +96,17 @@ jobs:
       - name: Run the QA agent on an emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 30                 # API 30 google_apis x86_64 is the most reliable image on CI runners
           arch: x86_64
           target: google_apis
           profile: pixel_6
+          cores: 2
+          ram-size: 4096M
+          disk-size: 7G
+          force-avd-creation: false
           disable-animations: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
             set +e                                  # run to the end and report, never abort silently
             exec > >(tee mobileqa.log) 2>&1         # capture EVERYTHING the agent does, from here on
