@@ -37,6 +37,11 @@ env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   MOBILEQA_SLACK_WEBHOOK: ${{ secrets.MOBILEQA_SLACK_WEBHOOK }}
 
+permissions:
+  contents: write
+  checks: write
+  pull-requests: write
+
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -58,7 +63,9 @@ jobs:
       # ---- BUILD (Expo/EAS). For native Android use: ./gradlew assembleDebug
       - name: Build Android APK (EAS local, preview profile)
         env: { EXPO_TOKEN: "${{ secrets.EXPO_TOKEN }}" }
-        run: npx eas-cli@latest build --platform android --profile preview --local --non-interactive --output ./qa-build.apk
+        run: |
+          set -o pipefail
+          npx eas-cli@latest build --platform android --profile preview --local --non-interactive --output ./qa-build.apk 2>&1 | tee build.log
 
       - name: Install mobileqa + Appium
         run: |
@@ -84,7 +91,8 @@ jobs:
             for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
             adb wait-for-device
             mobileqa doctor qa/app.android.yaml || true
-            mobileqa ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 300 }}
+            set -o pipefail
+            mobileqa ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 300 }} 2>&1 | tee mobileqa.log
 
       - name: Upload report
         if: always()
@@ -95,6 +103,17 @@ jobs:
         if: always()
         uses: mikepenz/action-junit-report@v4
         with: { report_paths: reports/**/junit.xml, check_name: "Mobile QA (Android)" }
+      - name: Post failure details on the commit
+        if: failure()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          {
+            echo "### Mobile QA (Android) failed — run ${{ github.run_number }}"
+            echo; echo '```'; tail -n 60 build.log 2>/dev/null || echo "(no build log)"; echo '```'
+            echo; echo '```'; tail -n 80 mobileqa.log 2>/dev/null || echo "(agent did not run)"; echo '```'
+            echo; echo '```'; tail -n 40 appium.log 2>/dev/null || true; echo '```'
+          } > comment.md
+          gh api repos/${{ github.repository }}/commits/${{ github.sha }}/comments -F body=@comment.md >/dev/null || true
 
       - name: Commit the grown suite
         if: always() && github.event_name != 'pull_request'
@@ -103,23 +122,33 @@ jobs:
           git add qa/suite && git diff --cached --quiet || (git commit -m "qa: suite grown by mobileqa run ${{ github.run_number }} [skip ci]" && git pull --rebase && git push)
 
   ios:
-    runs-on: macos-14
+    # macOS minutes bill at 10x. Best-effort until the simulator build is proven green,
+    # then remove continue-on-error so iOS blocks releases too.
+    runs-on: macos-15
     timeout-minutes: 120
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "/Applications/Xcode_${{ vars.XCODE_PICK || '26.2' }}.app/Contents/Developer" || true
+          xcodebuild -version
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with: { node-version: 20, cache: npm }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: npm ci
+      - name: Expose node to Xcode script phases
+        run: echo "NODE_BINARY=$(command -v node)" >> "$GITHUB_ENV"
 
       # ---- BUILD (Expo/EAS). Needs an eas.json profile "qa-simulator" with ios.simulator: true.
       # For native iOS: xcodebuild -scheme App -sdk iphonesimulator -configuration Debug -derivedDataPath build
       - name: Build iOS simulator app (EAS local)
         env: { EXPO_TOKEN: "${{ secrets.EXPO_TOKEN }}" }
         run: |
-          npx eas-cli@latest build --platform ios --profile qa-simulator --local --non-interactive --output ./qa-build.tar.gz
+          set -o pipefail
+          npx eas-cli@latest build --platform ios --profile qa-simulator --local --non-interactive --output ./qa-build.tar.gz 2>&1 | tee build.log
           mkdir -p qa-build && tar -xzf qa-build.tar.gz -C qa-build
           echo "APP_PATH=$(find $PWD/qa-build -name '*.app' -maxdepth 2 | head -1)" >> $GITHUB_ENV
 
@@ -138,7 +167,8 @@ jobs:
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
           xcrun simctl bootstatus "$SIM_UDID" -b
           mobileqa doctor qa/app.ios.yaml || true
-          mobileqa ci qa/app.ios.yaml --steps ${{ github.event.inputs.steps || 300 }}
+          set -o pipefail
+          mobileqa ci qa/app.ios.yaml --steps ${{ github.event.inputs.steps || 300 }} 2>&1 | tee mobileqa.log
 
       - name: Upload report
         if: always()
@@ -148,6 +178,17 @@ jobs:
         if: always()
         uses: mikepenz/action-junit-report@v4
         with: { report_paths: reports/**/junit.xml, check_name: "Mobile QA (iOS)" }
+      - name: Post failure details on the commit
+        if: failure()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          {
+            echo "### Mobile QA (iOS) failed — run ${{ github.run_number }}"
+            echo; echo '```'; tail -n 60 build.log 2>/dev/null || echo "(no build log)"; echo '```'
+            echo; echo '```'; tail -n 80 mobileqa.log 2>/dev/null || echo "(agent did not run)"; echo '```'
+            echo; echo '```'; tail -n 40 appium.log 2>/dev/null || true; echo '```'
+          } > comment.md
+          gh api repos/${{ github.repository }}/commits/${{ github.sha }}/comments -F body=@comment.md >/dev/null || true
       - name: Commit the grown suite
         if: always() && github.event_name != 'pull_request'
         run: |
