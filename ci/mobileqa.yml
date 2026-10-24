@@ -88,6 +88,14 @@ jobs:
           npm install -g appium
           appium driver install uiautomator2
 
+      # The Gradle build leaves the runner nearly full; creating the AVD (system image + userdata)
+      # then fails to boot with no output. Reclaim space — the APK is already copied to the repo root.
+      - name: Reclaim disk before the emulator
+        run: |
+          rm -rf android/app/build android/build android/.gradle ~/.gradle/caches/transforms-* ~/.gradle/caches/build-cache-* 2>/dev/null || true
+          npm cache clean --force 2>/dev/null || true
+          df -h /
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -102,7 +110,6 @@ jobs:
           profile: pixel_6
           cores: 2
           ram-size: 4096M
-          disk-size: 7G
           force-avd-creation: false
           disable-animations: true
           emulator-boot-timeout: 900
