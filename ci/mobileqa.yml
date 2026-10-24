@@ -102,12 +102,17 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
+            set +e                                  # run to the end and report, never abort silently
+            exec > >(tee mobileqa.log) 2>&1         # capture EVERYTHING the agent does, from here on
+            echo "== env =="; python -V; which mobileqa || true; adb devices; ls -la qa-build.apk
             nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
             for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
             adb wait-for-device
-            mobileqa doctor qa/app.android.yaml || true
-            set -o pipefail
-            mobileqa ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 300 }} 2>&1 | tee mobileqa.log
+            echo "== doctor =="
+            python -m mobileqa.cli doctor qa/app.android.yaml || true
+            echo "== explore + regress =="
+            python -m mobileqa.cli ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 300 }}
+            echo "== exit $? =="
 
       - name: Upload report
         if: always()
