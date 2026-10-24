@@ -19,7 +19,7 @@ name: Mobile QA agent
 
 on:
   push:
-    branches: [main]
+    branches: [main, "release/**"]
     tags: ["v*"]
   pull_request:
   schedule:
@@ -28,7 +28,7 @@ on:
     inputs:
       steps:
         description: exploration budget (actions)
-        default: "400"
+        default: "300"
 
 env:
   MOBILEQA_REPO: https://github.com/manan99991/mobileqa   # where the agent lives
@@ -65,7 +65,6 @@ jobs:
           pip install "git+${MOBILEQA_REPO}"
           npm install -g appium
           appium driver install uiautomator2
-          nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
 
       - name: Enable KVM
         run: |
@@ -81,9 +80,11 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
+            nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
+            for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
             adb wait-for-device
             mobileqa doctor qa/app.android.yaml || true
-            mobileqa ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 400 }}
+            mobileqa ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 300 }}
 
       - name: Upload report
         if: always()
@@ -99,7 +100,7 @@ jobs:
         if: always() && github.event_name != 'pull_request'
         run: |
           git config user.name "mobileqa-bot" && git config user.email "mobileqa@users.noreply.github.com"
-          git add qa/suite && git diff --cached --quiet || git commit -m "qa: suite grown by mobileqa run ${{ github.run_number }}" && git push
+          git add qa/suite && git diff --cached --quiet || (git commit -m "qa: suite grown by mobileqa run ${{ github.run_number }} [skip ci]" && git pull --rebase && git push)
 
   ios:
     runs-on: macos-14
@@ -127,15 +128,17 @@ jobs:
           pip install "git+${MOBILEQA_REPO}"
           npm install -g appium
           appium driver install xcuitest
-          nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
           UDID=$(xcrun simctl create "qa-iphone" "iPhone 15" | tail -1)
           xcrun simctl boot "$UDID"
           echo "SIM_UDID=$UDID" >> $GITHUB_ENV
 
       - name: Run the QA agent on the simulator
         run: |
+          nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
+          xcrun simctl bootstatus "$SIM_UDID" -b
           mobileqa doctor qa/app.ios.yaml || true
-          mobileqa ci qa/app.ios.yaml --steps ${{ github.event.inputs.steps || 400 }}
+          mobileqa ci qa/app.ios.yaml --steps ${{ github.event.inputs.steps || 300 }}
 
       - name: Upload report
         if: always()
@@ -149,5 +152,4 @@ jobs:
         if: always() && github.event_name != 'pull_request'
         run: |
           git config user.name "mobileqa-bot" && git config user.email "mobileqa@users.noreply.github.com"
-          git pull --rebase || true
-          git add qa/suite && git diff --cached --quiet || git commit -m "qa: iOS suite grown by mobileqa run ${{ github.run_number }}" && git push
+          git add qa/suite && git diff --cached --quiet || (git commit -m "qa: iOS suite grown by mobileqa run ${{ github.run_number }} [skip ci]" && git pull --rebase && git push)
