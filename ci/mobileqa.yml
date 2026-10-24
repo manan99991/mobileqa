@@ -101,31 +101,38 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
 
-      - name: Run the QA agent on an emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30                 # API 30 google_apis x86_64 is the most reliable image on CI runners
-          arch: x86_64
-          target: google_apis
-          profile: pixel_6
-          cores: 2
-          ram-size: 4096M
-          force-avd-creation: false
-          disable-animations: true
-          emulator-boot-timeout: 900
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: |
-            set +e                                  # run to the end and report, never abort silently
-            exec > >(tee mobileqa.log) 2>&1         # capture EVERYTHING the agent does, from here on
-            echo "== env =="; python -V; which mobileqa || true; adb devices; ls -la qa-build.apk
-            nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
-            for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
-            adb wait-for-device
-            echo "== doctor =="
-            python -m mobileqa.cli doctor qa/app.android.yaml || true
-            echo "== explore + regress =="
-            python -m mobileqa.cli ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 300 }}
-            echo "== exit $? =="
+      # Boot the emulator by hand (not reactivecircus) so its boot log comes back to us —
+      # the action was failing to boot on these runners and swallowing the reason.
+      - uses: android-actions/setup-android@v3
+      - name: Boot emulator and run the QA agent
+        run: |
+          set +e
+          exec > >(tee mobileqa.log) 2>&1          # everything below is captured and reported on failure
+          echo "== disk =="; df -h /
+          echo "== install image =="
+          yes | sdkmanager --install "system-images;android-30;google_apis;x86_64" "platform-tools" "emulator" 2>&1 | tail -5
+          echo no | avdmanager create avd -n qa -k "system-images;android-30;google_apis;x86_64" -d pixel_6 --force
+          echo "== launch emulator =="
+          nohup "$ANDROID_HOME/emulator/emulator" -avd qa -no-window -no-audio -no-boot-anim \
+            -gpu swiftshader_indirect -no-snapshot -accel on -netdelay none -netspeed full > emulator.log 2>&1 &
+          adb wait-for-device
+          echo "== wait for boot =="
+          for i in $(seq 1 60); do
+            [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && { echo "booted after ${i}x5s"; break; }
+            sleep 5
+          done
+          adb shell input keyevent 82 >/dev/null 2>&1 || true   # dismiss lock
+          echo "== env =="; python -V; which mobileqa || true; adb devices; ls -la qa-build.apk
+          echo "== appium =="
+          nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
+          echo "== doctor =="
+          python -m mobileqa.cli doctor qa/app.android.yaml || true
+          echo "== explore + regress =="
+          python -m mobileqa.cli ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 300 }}
+          rc=$?
+          echo "== agent exit $rc =="
+          exit $rc
 
       - name: Upload report
         if: always()
@@ -142,9 +149,10 @@ jobs:
         run: |
           {
             echo "### Mobile QA (Android) failed — run ${{ github.run_number }}"
-            echo; echo '```'; (grep -n -iE "error|what went wrong|FAILED|No space|OutOfMemory" build.log | grep -v "^.*warning" | head -40; echo ...; tail -n 30 build.log) 2>/dev/null || echo "(no build log)"; echo '```'
-            echo; echo '```'; tail -n 80 mobileqa.log 2>/dev/null || echo "(agent did not run)"; echo '```'
-            echo; echo '```'; tail -n 40 appium.log 2>/dev/null || true; echo '```'
+            echo; echo '**build log**'; echo '```'; (grep -n -iE "what went wrong|BUILD FAILED|No space|OutOfMemory" build.log | head -20; echo ...; tail -n 15 build.log) 2>/dev/null || echo "(no build log)"; echo '```'
+            echo; echo '**agent log**'; echo '```'; tail -n 90 mobileqa.log 2>/dev/null || echo "(agent did not run)"; echo '```'
+            echo; echo '**emulator boot log**'; echo '```'; tail -n 40 emulator.log 2>/dev/null || echo "(emulator.log missing)"; echo '```'
+            echo; echo '**appium log**'; echo '```'; tail -n 25 appium.log 2>/dev/null || true; echo '```'
           } > comment.md
           gh api repos/${{ github.repository }}/commits/${{ github.sha }}/comments -F body=@comment.md >/dev/null || true
 
