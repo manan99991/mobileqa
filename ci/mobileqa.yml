@@ -101,16 +101,17 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
 
-      # Boot the emulator by hand (not reactivecircus) so its boot log comes back to us —
-      # the action was failing to boot on these runners and swallowing the reason.
-      - uses: android-actions/setup-android@v3
+      # Boot the emulator by hand with the SDK already on the runner (the gradle build just used it),
+      # so its boot log comes back to us — the actions were failing silently before.
       - name: Boot emulator and run the QA agent
         run: |
           set +e
           exec > >(tee mobileqa.log) 2>&1          # everything below is captured and reported on failure
-          echo "== disk =="; df -h /
+          export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          echo "== sdk =="; echo "ANDROID_HOME=$ANDROID_HOME"; which sdkmanager avdmanager emulator adb; df -h /
           echo "== install image =="
-          yes | sdkmanager --install "system-images;android-30;google_apis;x86_64" "platform-tools" "emulator" 2>&1 | tail -5
+          yes | sdkmanager "system-images;android-30;google_apis;x86_64" "platform-tools" "emulator" 2>&1 | tail -5
           echo no | avdmanager create avd -n qa -k "system-images;android-30;google_apis;x86_64" -d pixel_6 --force
           echo "== launch emulator =="
           nohup "$ANDROID_HOME/emulator/emulator" -avd qa -no-window -no-audio -no-boot-anim \
