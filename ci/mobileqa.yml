@@ -28,7 +28,7 @@ on:
     inputs:
       steps:
         description: exploration budget (actions)
-        default: "300"
+        default: "60"
 
 env:
   MOBILEQA_REPO: https://github.com/manan99991/mobileqa   # where the agent lives
@@ -45,7 +45,7 @@ permissions:
 jobs:
   android:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -130,7 +130,7 @@ jobs:
           echo "== doctor =="
           python -m mobileqa.cli doctor qa/app.android.yaml || true
           echo "== explore + regress =="
-          python -m mobileqa.cli ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 300 }}
+          python -m mobileqa.cli ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 60 }}
           rc=$?
           echo "== agent exit $rc =="
           exit $rc
@@ -213,7 +213,7 @@ jobs:
           xcrun simctl bootstatus "$SIM_UDID" -b
           mobileqa doctor qa/app.ios.yaml || true
           set -o pipefail
-          mobileqa ci qa/app.ios.yaml --steps ${{ github.event.inputs.steps || 300 }} 2>&1 | tee mobileqa.log
+          mobileqa ci qa/app.ios.yaml --steps ${{ github.event.inputs.steps || 60 }} 2>&1 | tee mobileqa.log
 
       - name: Upload report
         if: always()

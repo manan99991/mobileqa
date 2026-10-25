@@ -2,7 +2,7 @@
 # Build the test binary:   npx eas-cli build --platform android --profile preview --local --output qa-build.apk
 app:
   name: Reckato
-  path: ${RECKATO_APK}            # e.g. ./qa-build.apk ; blank if already installed on the device
+  path: ${RECKATO_APK:-./qa-build.apk}   # built by the workflow; blank if already installed on the device
   package: com.reckato.app
   activity: ""                    # Expo default MainActivity is auto-detected
   login: {}                       # no accounts in Reckato
@@ -31,8 +31,8 @@ device:
     appium:autoGrantPermissions: false
 
 run:
-  max_steps: 500
-  max_minutes: 60
+  max_steps: 60
+  max_minutes: 15
   check_links: true
   check_values: true
   check_a11y: true

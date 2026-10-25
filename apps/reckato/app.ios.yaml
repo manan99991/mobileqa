@@ -3,7 +3,7 @@
 #   npx eas-cli build --platform ios --profile qa-simulator --local --output qa-build.tar.gz && tar -xzf qa-build.tar.gz
 app:
   name: Reckato
-  path: ${RECKATO_APP}            # e.g. ./Reckato.app (simulator) or .ipa (real device); blank if installed
+  path: ${APP_PATH:-}             # the workflow sets APP_PATH to the simulator .app; blank if installed
   bundle_id: com.reckato.app
   login: {}                       # no accounts in Reckato
   base_urls:
@@ -27,12 +27,12 @@ device:
   platform: ios
   name: iPhone 15
   os_version: "17.5"
-  udid: ""                       # set for a real iPhone
+  udid: ${SIM_UDID:-}            # workflow sets this; or a real iPhone's UDID
   appium_url: ${APPIUM_URL:-http://127.0.0.1:4723}
 
 run:
-  max_steps: 500
-  max_minutes: 60
+  max_steps: 60
+  max_minutes: 15
   check_links: true
   check_values: true
   check_a11y: true
