@@ -12,6 +12,7 @@ from ..driver.base import Element, ScreenState
 from ..findings import Finding
 from . import prompts
 from .actions import ELEMENT_GESTURES, GESTURES, SCREEN_GESTURES, Action
+from ..checks.ui import looks_like_app_error
 from .data import inputs_for, valid_value
 from .llm import LLM
 
@@ -93,6 +94,18 @@ class HeuristicBrain(Brain):
                 already_selected = bool(prev_el and prev_el.checked)   # tapping the active tab does nothing, fine
                 note = "" if already_selected else "tap produced no visible change"
                 verdict_ok = already_selected or ctx.prev_action.element_name.lower() in ("", "cancel", "close", "ok", "done")
+
+        # 0) the app crashed to its error screen: take its recovery action (Try again / Retry /
+        # Reload) if there is one, else go back — never spend the budget flailing on it.
+        if looks_like_app_error(st.texts):
+            retry = next((e for e in interactive
+                          if re.search(r"try again|retry|reload|restart|go home", e.name, re.I)), None)
+            if retry:
+                return StepResult(Action("tap", retry.id, retry.name,
+                                         reason="recover from the app's error screen",
+                                         expectation="the app leaves the error screen"), name, [], verdict_ok, note)
+            return StepResult(Action("back", reason="leave the app's error screen",
+                                     expectation="a working screen returns"), name, [], verdict_ok, note)
 
         # 1) forms: fill every empty input with valid data, then submit
         inputs = [e for e in interactive if e.editable]

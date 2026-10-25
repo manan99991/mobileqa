@@ -205,6 +205,43 @@ def test_self_healing_locator(tmp_path: Path):
     assert res.result == "healed" and res.healed_steps
 
 
+def test_app_error_screen_reported_once_not_as_noise():
+    """The app's own crash screen is ONE crash finding — its raw error text must not also be
+    flagged as placeholder/unformatted-value/tiny-tap noise."""
+    from mobileqa.driver.base import ScreenState
+    from mobileqa.checks.ui import looks_like_app_error, run_ui_checks
+    els = [
+        Element("1", "text", "TextView", text="Something went wrong", rect=Rect(0, 0, 400, 40)),
+        Element("2", "text", "TextView",
+                text="TypeError: Cannot read property 'ErrorBoundary' of undefined", rect=Rect(0, 50, 1000, 90)),
+        Element("3", "button", "Button", text="Try again", rect=Rect(0, 100, 60, 130), clickable=True),  # tiny
+    ]
+    st = ScreenState(els, "", None, 1080, 2000)
+    assert looks_like_app_error(st.texts)
+    fs = run_ui_checks(st, "android", "Crash", 1)
+    assert len(fs) == 1 and fs[0].severity == "critical" and fs[0].category == "crash"
+    assert not any(k in f.title for f in fs for k in ("Placeholder", "Tap target", "truncated"))
+    # a normal screen with the word "undefined" buried in prose is NOT an app error
+    assert not looks_like_app_error(["Your balance is undefined until payday"])
+
+
+def test_heuristic_brain_recovers_from_error_screen():
+    """On the error screen the brain taps the recovery action instead of flailing on it."""
+    from mobileqa.brain.planner import StepContext
+    from mobileqa.driver.base import ScreenState
+    c = cfg()
+    els = [
+        Element("1", "text", "TextView", text="Something went wrong", rect=Rect(0, 0, 400, 40)),
+        Element("2", "text", "TextView", text="TypeError: Cannot read property 'x' of undefined", rect=Rect(0, 50, 1000, 90)),
+        Element("3", "button", "Button", text="Try again", rect=Rect(0, 110, 300, 170), clickable=True),
+    ]
+    st = ScreenState(els, "", None, 1080, 2000)
+    ctx = StepContext(cfg=c, step=1, state=st, prev_state=None, prev_action=None, prev_screen_name="",
+                      transition="new screen", coverage={}, visited=[], frontier=[], history=[])
+    res = HeuristicBrain(c).step(ctx)
+    assert res.action.kind == "tap" and "again" in res.action.element_name.lower()
+
+
 def test_route_seeding_reaches_deep_screens(tmp_path: Path):
     """With routes configured, the explorer deep-links to each one so a tap-only brain still
     reaches deep screens it would never navigate to — and actually checks them once there."""

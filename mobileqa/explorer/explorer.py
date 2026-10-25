@@ -13,7 +13,7 @@ from pathlib import Path
 from ..brain.actions import Action, execute
 from ..brain.planner import Brain, StepContext
 from ..checks.links import LinkChecker
-from ..checks.ui import check_crash_logs, run_ui_checks
+from ..checks.ui import check_crash_logs, looks_like_app_error, run_ui_checks
 from ..checks.values import ValueMemory, run_value_checks
 from ..config import Config
 from ..driver.base import Device, ScreenState
@@ -111,7 +111,9 @@ class Explorer:
     def _check_screen(self, state: ScreenState, name: str, step: int) -> list[Finding]:
         fs: list[Finding] = []
         fs += run_ui_checks(state, self.cfg.platform, name, step)
-        if self.cfg.run.check_values:
+        # On the app's own crash screen, run_ui_checks already filed one crash finding; the value
+        # check would re-flag the raw error text (e.g. "…of undefined") as an unformatted value.
+        if self.cfg.run.check_values and not looks_like_app_error(state.texts):
             fs += run_value_checks(state, name, step, self.values)
         fs += check_crash_logs(self.dev.logs(), self.cfg.platform, state.fingerprint, name, step)
         return fs

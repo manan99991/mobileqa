@@ -38,12 +38,34 @@ LOG_NOISE_RE = re.compile(
     r"(delight5decoder|nexuslauncher|com\.android\.systemui|com\.android\.launcher|"
     r"system_process|setupwizard|surfaceflinger)", re.I)
 
+# A raw programming error on screen means the app fell through to its error boundary. Report it
+# ONCE as a crash and skip the cosmetic checks, so the error text itself ("…of undefined", a
+# stack frame) does not also masquerade as placeholder / unformatted-value / tiny-tap findings:
+# it is one bug, not ten. Technical signatures only — a friendly "we hit a snag" is not this.
+APP_ERROR_RE = re.compile(
+    r"(cannot read propert(y|ies) of (undefined|null)|undefined is not an? (object|function)|"
+    r"unhandled (promise )?rejection|\btypeerror\b|\breferenceerror\b|\brangeerror\b|"
+    r"invariant violation|minified react error|\bat [\w$.]+ \(.+:\d+:\d+\))", re.I)
+
+
+def looks_like_app_error(texts: list[str]) -> bool:
+    """True when the screen is the app's own crash / error-boundary screen (a raw error is on it)."""
+    joined = " ".join(texts)
+    return bool(APP_ERROR_RE.search(joined)) and not SYSTEM_NOISE_RE.search(joined)
+
 # Platform HIG minimums: iOS 44pt, Android 48dp. Rects are in the driver's units
 # (points on iOS, px on Android) so we scale the Android threshold by density estimate.
 
 
 def run_ui_checks(state: ScreenState, platform: str, screen_name: str, step: int) -> list[Finding]:
     out: list[Finding] = []
+    # The app crashed into its error boundary — one crash finding, and none of the cosmetic
+    # checks below (they would re-flag the raw error text as placeholder/value/tap-target noise).
+    if looks_like_app_error(state.texts):
+        return [Finding("crash", "critical", "App crashed to its error screen",
+                        f"A raw error is on screen — the app fell through to its error boundary: "
+                        f"{' '.join(state.texts)[:220]}",
+                        state.fingerprint, screen_name, step=step)]
     els = [e for e in state.elements if e.visible and e.rect.area > 0]
     min_target = 44 if platform == "ios" else _android_min_px(state)
 
