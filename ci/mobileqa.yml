@@ -109,13 +109,18 @@ jobs:
           exec > >(tee mobileqa.log) 2>&1          # everything below is captured and reported on failure
           export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          export ANDROID_AVD_HOME="$HOME/.android/avd"; mkdir -p "$ANDROID_AVD_HOME"
           echo "== sdk =="; echo "ANDROID_HOME=$ANDROID_HOME"; which sdkmanager avdmanager emulator adb; df -h /
-          echo "== install image =="
-          yes | sdkmanager "system-images;android-30;google_apis;x86_64" "platform-tools" "emulator" 2>&1 | tail -5
-          echo no | avdmanager create avd -n qa -k "system-images;android-30;google_apis;x86_64" -d pixel_6 --force
-          echo "== accel check =="; ls -la /dev/kvm 2>&1; "$ANDROID_HOME/emulator/emulator" -accel-check 2>&1 | tail -3
+          echo "== install system image (emulator + platform-tools already on the runner) =="
+          yes | sdkmanager "system-images;android-30;google_apis;x86_64" >/dev/null 2>&1 && echo "image installed"
+          echo "== create avd =="
+          echo no | avdmanager --verbose create avd --force --name qa \
+            --package "system-images;android-30;google_apis;x86_64" --device pixel_6 2>&1 | tail -8
+          echo "AVDs: $(emulator -list-avds 2>/dev/null | tr '\n' ' ')"
+          emulator -list-avds 2>/dev/null | grep -qx qa || { echo "AVD creation FAILED"; ls -la "$ANDROID_AVD_HOME"; exit 1; }
+          echo "== accel check =="; ls -la /dev/kvm 2>&1; emulator -accel-check 2>&1 | tail -3
           echo "== launch emulator $(date +%T) =="
-          nohup "$ANDROID_HOME/emulator/emulator" -avd qa -no-window -no-audio -no-boot-anim \
+          nohup emulator -avd qa -no-window -no-audio -no-boot-anim \
             -gpu swiftshader_indirect -no-snapshot -netdelay none -netspeed full > emulator.log 2>&1 &
           timeout 180 adb wait-for-device
           echo "== wait for boot $(date +%T) =="
