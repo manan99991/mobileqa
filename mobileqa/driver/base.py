@@ -191,6 +191,13 @@ class Device(ABC):
     def reset(self) -> None:
         """Clear app data and relaunch — a fresh user."""
 
+    def launch_route(self, route: str) -> None:
+        """Deep-link straight to a route/screen so exploration can start there, instead of
+        only ever reaching screens by tapping from the launch screen. Default: ignore the
+        route and do a normal launch; drivers that support deep links / activity intents
+        override this. Raise on a route that genuinely could not be opened."""
+        self.launch()
+
     @abstractmethod
     def quit(self) -> None: ...
 

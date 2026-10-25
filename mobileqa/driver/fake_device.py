@@ -169,6 +169,19 @@ class FakeDevice(Device):
         self.crashed = False
         self.screen = "home" if self.logged_in else "login"
 
+    def launch_route(self, route: str):
+        # Simulate a deep link: jump straight to a named screen (the real driver does this with an
+        # activity intent / URL). Unknown routes behave like a plain launch.
+        self.action_log.append(f"route {route}")
+        self.launched = True
+        self.crashed = False
+        if route in _titles and route != "login":
+            self.logged_in = True
+            self.screen = route
+        else:
+            self.screen = "home" if self.logged_in else "login"
+        self.scroll_offset = 0
+
     def terminate(self):
         self.launched = False
 

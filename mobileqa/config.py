@@ -36,6 +36,9 @@ class AppConfig:
     ])
     goals: list[str] = field(default_factory=list)           # extra business flows to verify
     known_issues: list[str] = field(default_factory=list)    # suppress noise
+    routes: list[str] = field(default_factory=list)          # deep-link routes/screens to seed exploration from
+    route_extra: str = "route"                               # Android intent string-extra key carrying the route id
+    route_activity: str = ""                                 # activity that receives the route intent (defaults to `activity`)
 
 
 @dataclass

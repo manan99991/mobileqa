@@ -60,7 +60,7 @@ def write_report(cfg: Config, run_dir: Path, run_id: str, mode: str, result: Run
                       replay=replay, replay_results=rr, suite=suite_stats, added=added, gate_failed=blocked,
                       fail_on=cfg.run.fail_on, model=cfg.run.model, llm_calls=llm_calls)
     out = run_dir / "report.html"
-    out.write_text(html)
+    out.write_text(html, encoding="utf-8")   # report contains ≠, ·, … — force utf-8 (Windows defaults to cp1252)
     (run_dir / "summary.json").write_text(json.dumps({"run_id": run_id, "mode": mode, "blocked": blocked, "summary": summary,
                                                        "replay": replay, "suite": suite_stats, "new_cases": added}, indent=1))
     write_junit(run_dir / "junit.xml", cfg, result, replay_results)
@@ -83,4 +83,4 @@ def write_junit(path: Path, cfg: Config, result: RunResult | None, replay_result
     failures = sum("<failure" in c for c in cases)
     xml = (f'<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="mobileqa {escape(cfg.app.name)}" tests="{len(cases)}" failures="{failures}">\n'
            + "\n".join(cases) + "\n</testsuite>\n")
-    path.write_text(xml)
+    path.write_text(xml, encoding="utf-8")   # declared UTF-8; don't let a cp1252 default crash the write

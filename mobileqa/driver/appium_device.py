@@ -121,6 +121,31 @@ class AppiumDevice(Device):
                 pass
             self.driver.activate_app(self.app_id)
 
+    def launch_route(self, route: str) -> None:
+        # Open a specific route directly, so the tap-only heuristic brain can reach deep screens
+        # (e.g. one per tool) it would never navigate to by tapping. A route is either a deep-link
+        # URL (contains "://") or a token passed to the launch activity as a string extra —
+        # the Android adb equivalent is:  am start -n <package>/<activity> -e <route_extra> <route>
+        if self.driver is None:
+            self.launch()
+        a = self.cfg.app
+        try:
+            if "://" in route:
+                args = {"url": route}
+                args["package" if self.platform == "android" else "bundleId"] = self.app_id
+                self.driver.execute_script("mobile: deepLink", args)
+                return
+            if self.platform != "android":
+                raise RuntimeError("iOS route-seeding needs a URL deep link in app.routes")
+            act = a.route_activity or a.activity
+            if not act:
+                raise RuntimeError("route-seeding needs app.activity (the activity that reads the route extra), or a URL route")
+            component = act if "/" in act else f"{self.app_id}/{act if '.' in act else '.' + act}"
+            self.driver.execute_script("mobile: startActivity",
+                                       {"intent": component, "extras": [["s", a.route_extra, route]]})
+        except WebDriverException as e:
+            raise RuntimeError(f"could not open route {route!r}: {e}") from e
+
     def quit(self) -> None:
         if self.driver:
             try:

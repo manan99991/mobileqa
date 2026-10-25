@@ -21,10 +21,22 @@ ERROR_TEXT_RE = re.compile(
     r"status 5\d\d|status 4\d\d|cannot connect|try again later)", re.I)
 
 # OS / emulator chrome that is NOT the app under test — never report these as app defects.
+# On-screen ANR/crash dialogs are told apart from a real app crash by their TEXT (the launcher
+# and System UI say "… isn't responding"); we deliberately do not key on the aerr_* button ids,
+# because a genuine app crash dialog uses those same ids and only the text disambiguates.
 SYSTEM_NOISE_RE = re.compile(
     r"(system ?ui isn'?t responding|system ?ui.*not responding|launcher isn'?t responding|"
     r"process system isn'?t responding|android system|wait|close app|google play services|"
     r"pixel ?launcher|systemui|setup wizard)", re.I)
+
+# Emulator / OS *log* noise that is NOT the app under test. The free CI emulator's own media
+# codec throws a NullPointerException every few seconds ("Delight5Decoder"), and the launcher
+# and System UI ANR while a 2-vCPU software-GPU runner settles after boot. Each of these log
+# lines names a system component or the codec — never the app — so they must never become
+# findings. A real app crash/ANR names the app's own package and does not match here.
+LOG_NOISE_RE = re.compile(
+    r"(delight5decoder|nexuslauncher|com\.android\.systemui|com\.android\.launcher|"
+    r"system_process|setupwizard|surfaceflinger)", re.I)
 
 # Platform HIG minimums: iOS 44pt, Android 48dp. Rects are in the driver's units
 # (points on iOS, px on Android) so we scale the Android threshold by density estimate.
@@ -126,6 +138,8 @@ def _android_min_px(state: ScreenState) -> int:
 def check_crash_logs(lines: list[str], platform: str, screen: str, screen_name: str, step: int) -> list[Finding]:
     out: list[Finding] = []
     for ln in lines:
+        if LOG_NOISE_RE.search(ln):
+            continue   # emulator/OS log noise (codec NPE, launcher/SystemUI ANR), not the app
         low = ln.lower()
         n_before = len(out)
         if platform == "android":

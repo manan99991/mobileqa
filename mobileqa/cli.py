@@ -175,6 +175,10 @@ app:
   goals:                      # business flows the agent must complete and verify
     - "Complete a search and open a result"
   known_issues: []            # substrings of finding titles to downgrade to info
+  # routes: []                # optional deep-link routes/screens to seed exploration from (e.g. one per tool),
+  #                           # so a tap-only run still reaches deep screens. adb: am start -n <pkg>/<activity> -e route <id>
+  # route_extra: route        # intent string-extra key that carries the route id (Android)
+  # route_activity: ""        # activity that receives the route intent (defaults to `activity`)
 
 device:
   platform: {platform}

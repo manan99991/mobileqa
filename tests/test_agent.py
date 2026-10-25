@@ -99,6 +99,21 @@ def test_crash_log_detection():
     assert fs and fs[0].category == "crash"
 
 
+def test_crash_log_ignores_emulator_noise():
+    """The CI emulator's own codec NPE and the launcher/SystemUI ANR must never become findings,
+    but a real app crash in the same batch still must."""
+    noise = [
+        "E Delight5Decoder: java.lang.NullPointerException",            # emulator video codec spam
+        "E ActivityManager: ANR in com.android.systemui",              # System UI ANR while settling
+        "W ActivityManager: ANR in com.google.android.apps.nexuslauncher (reason: ...)",  # Pixel Launcher ANR
+        "E AndroidRuntime: FATAL EXCEPTION in com.android.systemui",   # system crash, not the app
+    ]
+    assert check_crash_logs(noise, "android", "fp", "Home", 1) == []
+    mixed = noise + ["E AndroidRuntime: FATAL EXCEPTION: main java.lang.IllegalStateException at com.demo.CheckoutActivity"]
+    fs = check_crash_logs(mixed, "android", "fp", "Home", 1)
+    assert len(fs) == 1 and fs[0].severity == "critical"
+
+
 def test_link_extraction_and_classification():
     lc = LinkChecker()
     urls = lc.extract(["see https://example.com/a. and www.foo.org/x?y=1)", "nothing"])
@@ -188,6 +203,30 @@ def test_self_healing_locator(tmp_path: Path):
     store.save(case)
     res = Replayer(c, FakeDevice(), HeuristicBrain(c), store, tmp_path / "rp").run_case(case)
     assert res.result == "healed" and res.healed_steps
+
+
+def test_route_seeding_reaches_deep_screens(tmp_path: Path):
+    """With routes configured, the explorer deep-links to each one so a tap-only brain still
+    reaches deep screens it would never navigate to — and actually checks them once there."""
+    c = cfg(max_steps=30)
+    c.app.routes = ["settings", "detail", "cart"]
+    dev = FakeDevice()
+    r = Explorer(c, dev, HeuristicBrain(c), tmp_path / "run").run()
+    seeded = [a for a in dev.action_log if a.startswith("route ")]
+    assert any("route settings" in a for a in seeded)
+    assert any("route detail" in a for a in seeded)
+    assert any("route cart" in a for a in seeded)
+    # proof it didn't merely open the route but explored & ran checks there:
+    titles = {f.title for f in r.findings.by_severity()}
+    assert "Placeholder or debug text visible" in titles   # the settings screen's "Lorem ipsum placeholder"
+
+
+def test_no_routes_means_normal_launch(tmp_path: Path):
+    """Backward-compat: with no routes, launch_route is never called and behaviour is unchanged."""
+    c = cfg(max_steps=20)
+    dev = FakeDevice()
+    Explorer(c, dev, HeuristicBrain(c), tmp_path / "run").run()
+    assert not any(a.startswith("route ") for a in dev.action_log)
 
 
 def test_forbidden_actions_are_never_taken():

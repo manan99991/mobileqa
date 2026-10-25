@@ -74,6 +74,11 @@ class Explorer:
         self.repro: list[str] = []            # human-readable path since launch
         self._same_screen_streak = 0
         self._last_fp = ""
+        # route-seeding: if the config lists deep-link routes, give each a slice of the budget
+        self._routes: list[str] = list(cfg.app.routes)
+        self._route_idx = -1
+        self._route_step = 0
+        self._route_budget = 0
 
     # ---- helpers ----------------------------------------------------------
     def _shot(self, state: ScreenState, step: int, tag: str = "") -> str:
@@ -131,6 +136,28 @@ class Explorer:
         self.repro = ["(relaunch app)"]
         return self.dev.snapshot()
 
+    def _seed_next_route(self, step: int) -> ScreenState | None:
+        """Deep-link to the next configured route and return its first screen, or None once the
+        routes are exhausted. This lets a tap-only heuristic brain reach deep screens — e.g. one
+        per tool — that it would never navigate to by tapping, giving per-screen coverage for free.
+        A route that fails to open is logged as a finding and skipped."""
+        while self._route_idx + 1 < len(self._routes):
+            self._route_idx += 1
+            route = self._routes[self._route_idx]
+            log.info("  seed route %d/%d: %s", self._route_idx + 1, len(self._routes), route)
+            self.repro = [f"(deep link to {route})"]
+            try:
+                self.dev.launch_route(route)
+            except Exception as e:  # noqa: BLE001
+                self._add([Finding("functional", "medium", "Deep link failed to open",
+                                   f"Route {route!r} did not open: {type(e).__name__}: {str(e)[:160]}",
+                                   "", route, step=step)], "")
+                continue
+            time.sleep(self.cfg.run.launch_wait_s)
+            self._route_step = 0
+            return self.dev.snapshot()
+        return None
+
     # ---- main loop ----------------------------------------------------------
     def run(self) -> RunResult:
         cfg = self.cfg.run
@@ -139,6 +166,12 @@ class Explorer:
         self.dev.launch()
         time.sleep(cfg.launch_wait_s)
         state = self.dev.snapshot()
+        if self._routes:
+            # split the budget across the routes, keeping a share for free exploration at the end
+            self._route_budget = max(3, cfg.max_steps // (len(self._routes) + 1))
+            seeded = self._seed_next_route(0)
+            if seeded is not None:
+                state = seeded
         prev_state: ScreenState | None = None
         prev_action: Action | None = None
         prev_name = ""
@@ -149,6 +182,16 @@ class Explorer:
             if time.time() > deadline:
                 result.stopped_reason = "time budget"
                 break
+            # route-seeded mode: give each deep-linked route a slice of the budget, then move to
+            # the next; once the routes run out, fall through to normal free exploration.
+            if self._routes:
+                self._route_step += 1
+                if self._route_step > self._route_budget:
+                    nxt = self._seed_next_route(step)
+                    if nxt is not None:
+                        state, prev_state, prev_action = nxt, None, None
+                        continue
+                    self._routes = []   # exhausted — explore freely with whatever budget is left
             t0 = time.time()
             shot = self._shot(state, step)
 
@@ -213,6 +256,12 @@ class Explorer:
                 action = Action("back", reason="stuck", expectation="leave this screen")
                 self._same_screen_streak = 0
             if action.kind == "done":
+                if self._routes:   # this route is done, but others remain — jump to the next
+                    nxt = self._seed_next_route(step)
+                    if nxt is not None:
+                        state, prev_state, prev_action, prev_name = nxt, None, None, ""
+                        continue
+                    self._routes = []
                 result.stopped_reason = "brain says app exhausted"
                 self.steps.append(StepRecord(step, state.fingerprint, node.name, action.to_dict(), state.fingerprint, node.name,
                                              True, res.verdict_note, keys, shot, int((time.time() - t0) * 1000)))
