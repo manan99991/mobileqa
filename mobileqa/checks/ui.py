@@ -20,6 +20,12 @@ ERROR_TEXT_RE = re.compile(
     r"isn'?t responding|not responding|failed to load|unable to load|network error|internal server error|"
     r"status 5\d\d|status 4\d\d|cannot connect|try again later)", re.I)
 
+# OS / emulator chrome that is NOT the app under test — never report these as app defects.
+SYSTEM_NOISE_RE = re.compile(
+    r"(system ?ui isn'?t responding|system ?ui.*not responding|launcher isn'?t responding|"
+    r"process system isn'?t responding|android system|wait|close app|google play services|"
+    r"pixel ?launcher|systemui|setup wizard)", re.I)
+
 # Platform HIG minimums: iOS 44pt, Android 48dp. Rects are in the driver's units
 # (points on iOS, px on Android) so we scale the Android threshold by density estimate.
 
@@ -41,8 +47,8 @@ def run_ui_checks(state: ScreenState, platform: str, screen_name: str, step: int
             out.append(Finding("content", "high", "Placeholder or debug text visible",
                                f"'{e.text}' looks like placeholder/dev text shipped to the UI.",
                                state.fingerprint, screen_name, name, step=step))
-        # --- error text surfaced to the user
-        if e.text and ERROR_TEXT_RE.search(e.text) and len(e.text) < 300:
+        # --- error text surfaced to the user (but skip OS/emulator chrome, not the app's fault)
+        if e.text and ERROR_TEXT_RE.search(e.text) and len(e.text) < 300 and not SYSTEM_NOISE_RE.search(e.text):
             out.append(Finding("functional", "high", "Error message shown on screen",
                                f"Screen shows: '{e.text}'.", state.fingerprint, screen_name, name, step=step))
         # --- tiny tap targets
@@ -94,8 +100,10 @@ def run_ui_checks(state: ScreenState, platform: str, screen_name: str, step: int
                            "No text or labelled elements are visible. Possible failed load or white screen.",
                            state.fingerprint, screen_name, step=step))
 
-    # --- crash dialogs
+    # --- crash dialogs (ignore OS/emulator "System UI isn't responding" — that's the environment)
     joined = " ".join(state.texts).lower()
+    if SYSTEM_NOISE_RE.search(joined):
+        return out
     for pat, title in (("keeps stopping", "App crash dialog (Android)"),
                        ("has stopped", "App crash dialog (Android)"),
                        ("isn't responding", "App Not Responding dialog"),
