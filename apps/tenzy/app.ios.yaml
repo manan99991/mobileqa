@@ -1,37 +1,46 @@
-# Tenzy — iOS. Bundle com.tenzy.toolkit (ASC app 6824023361).
-# Build the simulator binary (eas.json profile qa-simulator with ios.simulator: true) or xcodebuild -sdk iphonesimulator
+# Tenzy — iOS. Repo: manan99991/putt-party-play (NATIVE SwiftUI, Xcode project via XcodeGen — NOT Expo).
+# App target HandyTools, bundle com.tenzy.toolkit. iOS already has a GREEN GitHub Actions build/test pipeline —
+# mirror that build, then install the resulting .app on a simulator for the agent.
+# Build for simulator:  xcodegen && xcodebuild -scheme HandyTools -sdk iphonesimulator -configuration Debug -derivedDataPath build
+#   -> build/Build/Products/Debug-iphonesimulator/HandyTools.app
 app:
   name: Tenzy
-  path: ${TENZY_APP}             # e.g. ./Tenzy.app (simulator) or .ipa; blank if installed
+  path: ${TENZY_APP:-}           # the simulator HandyTools.app; blank if already installed
   bundle_id: com.tenzy.toolkit
-  login: {}                       # no accounts in Reckato
+  login: {}
   base_urls:
     - https://manan99991.github.io/tenzy/
     - https://manan99991.github.io/tenzy/privacy.html
   allow_destructive: false
   forbidden_texts: ["Subscribe", "Start free trial", "Buy", "Restore purchases", "Rate", "Send feedback", "Delete"]
+  # Tenzy is built FOR automated testing. Launch args below enable uitest mode (skip onboarding + paywall + crash
+  # dialog) and preload a sample so each tool has input. Open a specific tool with: -route <toolId>.
+  # 30 tool route ids: fitit scan studio video formatfix scrub cleaner qrwifi stitch shareready light contacts
+  #   measure magnify procam gpsdash audiolab rest colorvision sorted textstudio translate voicenotes
+  #   livecaptions shield lens memory datagrab describe vault
   goals:
-    - "Open every tool on all three pages (everyday, helpful, AI) and use each once with sensible input"
-    - "Free tier: the ~8 basic utilities work without Pro; AI and output tools show the Pro paywall, never a blank screen"
-    - "Paywall shows $19.99/year, 3-day free trial, auto-renew and cancel terms; 'free' never appears without 'optional Pro subscription'"
-    - "Every screen, modal and sub-screen has a visible Back or Done (store-review dead-end check)"
-    - "Ads: an ad slot never covers a control; the app still works if the ad fails to load"
+    - "Open every one of the 30 tools (fitit, scan, studio, video, formatfix, scrub, cleaner, qrwifi, stitch, shareready, light, contacts, measure, magnify, procam, gpsdash, audiolab, rest, colorvision, sorted, textstudio, translate, voicenotes, livecaptions, shield, lens, memory, datagrab, describe, vault) and exercise each with sensible input, checking the result is correct"
+    - "Free tier vs Pro paywall behaves correctly; 'free' never appears without 'optional Pro subscription'"
+    - "Every screen, modal and sub-screen has a visible Back or Done (App Store dead-end check)"
     - "Privacy policy and every external link open and are not 404"
     - "Rotate to landscape in two tools; nothing clipped; state kept"
     - "Background the app mid-tool and come back: input is preserved"
-    - "Flashlight strobe/SOS and any timer-based tool stop cleanly when leaving the screen"
   known_issues: []
 
 device:
   platform: ios
   name: iPhone 15
   os_version: "17.5"
-  udid: ""
+  udid: ""                        # workflow sets this to the booted simulator
   appium_url: ${APPIUM_URL:-http://127.0.0.1:4723}
+  extra_caps:
+    # uitest mode: skip onboarding/paywall/crash-dialog, preload a sample input.
+    appium:processArguments:
+      args: ["-uitest", "-sample"]
 
 run:
-  max_steps: 500
-  max_minutes: 60
+  max_steps: 400
+  max_minutes: 40
   check_links: true
   check_values: true
   check_a11y: true

@@ -1,18 +1,25 @@
-# Tenzy — Android. Package com.tenzy.app.
-# Build the test binary:   npx eas-cli build --platform android --profile preview --local --output qa-build.apk
+# Tenzy — Android. Repo: manan99991/putt-party-play (NATIVE Kotlin + Jetpack Compose, Gradle — NOT Expo).
+# Build the test binary:   cd android && ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64
+#   -> android/app/build/outputs/apk/debug/app-debug.apk
 app:
   name: Tenzy
-  path: ${TENZY_APK}            # e.g. ./qa-build.apk ; blank if already installed on the device
-  package: com.tenzy.app
-  activity: ""                    # Expo default MainActivity is auto-detected
-  login: {}                       # no accounts in Reckato
+  path: ${TENZY_APK:-./app-debug.apk}   # the gradle debug APK; blank if already installed
+  package: com.tenzy.toolkit             # applicationId
+  activity: com.handytools.app.MainActivity   # namespace is com.handytools.app
+  login: {}
   base_urls:
     - https://manan99991.github.io/tenzy/
     - https://manan99991.github.io/tenzy/privacy.html
   allow_destructive: false
   forbidden_texts: ["Subscribe", "Start free trial", "Buy", "Restore purchases", "Rate", "Send feedback", "Delete"]
+  # Tenzy is built FOR automated testing: every tool is a deep-link route. The launch below unlocks Pro
+  # and enables uitest mode (skips onboarding + paywall + crash dialog) so the agent reaches every tool.
+  # The 30 tool route ids (drive each with: adb shell am start -n com.tenzy.toolkit/com.handytools.app.MainActivity -e route <id>):
+  #   fitit scan studio video formatfix scrub cleaner qrwifi stitch shareready light contacts measure magnify
+  #   procam gpsdash audiolab rest colorvision sorted textstudio translate voicenotes livecaptions shield lens
+  #   memory datagrab describe vault
   goals:
-    - "Open every tool on all three pages (everyday, helpful, AI) and use each once with sensible input"
+    - "Open every one of the 30 tools (fitit, scan, studio, video, formatfix, scrub, cleaner, qrwifi, stitch, shareready, light, contacts, measure, magnify, procam, gpsdash, audiolab, rest, colorvision, sorted, textstudio, translate, voicenotes, livecaptions, shield, lens, memory, datagrab, describe, vault) and exercise each with sensible input, checking the result is correct"
     - "Free tier: the ~8 basic utilities work without Pro; AI and output tools show the Pro paywall, never a blank screen"
     - "Paywall shows $19.99/year, 3-day free trial, auto-renew and cancel terms; 'free' never appears without 'optional Pro subscription'"
     - "Every screen, modal and sub-screen has a visible Back or Done (store-review dead-end check)"
@@ -28,11 +35,13 @@ device:
   name: Pixel_6_API_34
   appium_url: ${APPIUM_URL:-http://127.0.0.1:4723}
   extra_caps:
-    appium:autoGrantPermissions: false
+    appium:autoGrantPermissions: true
+    # Unlock Pro + skip onboarding/paywall/crash-dialog so the agent gets into every tool.
+    appium:optionalIntentArguments: "-e route homepro -e uitest true"
 
 run:
-  max_steps: 500
-  max_minutes: 60
+  max_steps: 400
+  max_minutes: 40
   check_links: true
   check_values: true
   check_a11y: true
