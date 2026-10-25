@@ -100,7 +100,13 @@ class AppiumDevice(Device):
                 pass
 
     def reset(self) -> None:
-        assert self.driver
+        # In `ci` mode the Replayer runs before the Explorer, so reset() can be the first
+        # thing to touch the device — open the session lazily instead of asserting it exists.
+        # (launch() with no driver creates the Appium session and launches the app fresh,
+        # which is exactly the clean state reset() wants for the first replay case.)
+        if self.driver is None:
+            self.launch()
+            return
         if self.app_id:
             try:
                 self.driver.terminate_app(self.app_id)
