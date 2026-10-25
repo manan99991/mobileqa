@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import time
 from dataclasses import asdict, dataclass, field
@@ -22,6 +23,13 @@ from .graph import AppGraph
 log = logging.getLogger("mobileqa.explorer")
 
 SYSTEM_DIALOG_OK = re.compile(r"^(allow|while using the app|only this time|ok|continue|got it|accept|agree|not now|no thanks|later|skip|dismiss|close)$", re.I)
+
+
+def _env_int(name: str) -> int:
+    try:
+        return int(os.environ.get(name, "") or 0)
+    except ValueError:
+        return 0
 
 
 @dataclass
@@ -76,6 +84,18 @@ class Explorer:
         self._last_fp = ""
         # route-seeding: if the config lists deep-link routes, give each a slice of the budget
         self._routes: list[str] = list(cfg.app.routes)
+        # Sharding for a big route list on limited CI: MOBILEQA_ROUTE_OFFSET rotates the start
+        # (so successive scheduled runs cover different tools and all get reached over the cycle),
+        # MOBILEQA_ROUTE_LIMIT caps how many this run seeds (so each gets enough steps to be tested
+        # properly rather than all of them getting one tap). Both default off -> every route, from 0.
+        if self._routes:
+            off = _env_int("MOBILEQA_ROUTE_OFFSET")
+            lim = _env_int("MOBILEQA_ROUTE_LIMIT")
+            if off:
+                off %= len(self._routes)
+                self._routes = self._routes[off:] + self._routes[:off]
+            if lim > 0:
+                self._routes = self._routes[:lim]
         self._route_idx = -1
         self._route_step = 0
         self._route_budget = 0

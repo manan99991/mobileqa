@@ -221,6 +221,21 @@ def test_route_seeding_reaches_deep_screens(tmp_path: Path):
     assert "Placeholder or debug text visible" in titles   # the settings screen's "Lorem ipsum placeholder"
 
 
+def test_route_sharding_offset_and_limit(tmp_path: Path, monkeypatch):
+    """A big route list is sharded across runs: OFFSET rotates the start, LIMIT caps this run."""
+    c = cfg(max_steps=5)
+    c.app.routes = [f"r{i}" for i in range(10)]            # r0..r9
+    monkeypatch.setenv("MOBILEQA_ROUTE_OFFSET", "3")
+    monkeypatch.setenv("MOBILEQA_ROUTE_LIMIT", "4")
+    ex = Explorer(c, FakeDevice(), HeuristicBrain(c), tmp_path / "run")
+    assert ex._routes == ["r3", "r4", "r5", "r6"]          # rotated by 3, first 4
+    # offset wraps past the end
+    monkeypatch.setenv("MOBILEQA_ROUTE_OFFSET", "9")
+    monkeypatch.delenv("MOBILEQA_ROUTE_LIMIT")
+    ex2 = Explorer(c, FakeDevice(), HeuristicBrain(c), tmp_path / "run2")
+    assert ex2._routes[0] == "r9" and ex2._routes[1] == "r0" and len(ex2._routes) == 10
+
+
 def test_no_routes_means_normal_launch(tmp_path: Path):
     """Backward-compat: with no routes, launch_route is never called and behaviour is unchanged."""
     c = cfg(max_steps=20)
