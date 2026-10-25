@@ -23,7 +23,7 @@ on:
     tags: ["v*"]
   pull_request:
   schedule:
-    - cron: "17 7 * * *"        # nightly — the "app has to work on its own" run
+    - cron: "17 7 * * 1"        # weekly (Mon) deep run — keeps private-repo Action minutes well inside the free tier
   workflow_dispatch:
     inputs:
       steps:
