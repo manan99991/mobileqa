@@ -113,26 +113,31 @@ jobs:
           echo "== install image =="
           yes | sdkmanager "system-images;android-30;google_apis;x86_64" "platform-tools" "emulator" 2>&1 | tail -5
           echo no | avdmanager create avd -n qa -k "system-images;android-30;google_apis;x86_64" -d pixel_6 --force
-          echo "== launch emulator =="
+          echo "== accel check =="; ls -la /dev/kvm 2>&1; "$ANDROID_HOME/emulator/emulator" -accel-check 2>&1 | tail -3
+          echo "== launch emulator $(date +%T) =="
           nohup "$ANDROID_HOME/emulator/emulator" -avd qa -no-window -no-audio -no-boot-anim \
-            -gpu swiftshader_indirect -no-snapshot -accel on -netdelay none -netspeed full > emulator.log 2>&1 &
-          adb wait-for-device
-          echo "== wait for boot =="
+            -gpu swiftshader_indirect -no-snapshot -netdelay none -netspeed full > emulator.log 2>&1 &
+          timeout 180 adb wait-for-device
+          echo "== wait for boot $(date +%T) =="
+          booted=0
           for i in $(seq 1 60); do
-            [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && { echo "booted after ${i}x5s"; break; }
+            [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && { echo "booted after ${i}x5s at $(date +%T)"; booted=1; break; }
             sleep 5
           done
+          [ "$booted" = "1" ] || { echo "EMULATOR DID NOT BOOT — last emulator.log:"; tail -20 emulator.log; exit 1; }
           adb shell input keyevent 82 >/dev/null 2>&1 || true   # dismiss lock
-          echo "== env =="; python -V; which mobileqa || true; adb devices; ls -la qa-build.apk
+          echo "== env $(date +%T) =="; python -V; which mobileqa || true; adb devices; ls -la qa-build.apk
           echo "== appium =="
           nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
-          echo "== doctor =="
+          echo "== doctor $(date +%T) =="
           python -m mobileqa.cli doctor qa/app.android.yaml || true
-          echo "== explore + regress =="
-          python -m mobileqa.cli ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 60 }}
+          echo "== explore + regress $(date +%T) =="
+          # Hard wall: the agent physically cannot overrun the job, whatever its internal clock does.
+          timeout --signal=TERM 18m python -m mobileqa.cli ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 60 }}
           rc=$?
-          echo "== agent exit $rc =="
+          echo "== agent exit $rc at $(date +%T) =="
+          [ $rc -eq 124 ] && echo "(agent hit the 18m hard timeout — emulator is slow; lower --steps)"
           exit $rc
 
       - name: Upload report
@@ -145,11 +150,11 @@ jobs:
         uses: mikepenz/action-junit-report@v4
         with: { report_paths: reports/**/junit.xml, check_name: "Mobile QA (Android)" }
       - name: Post failure details on the commit
-        if: failure()
+        if: ${{ !success() }}            # fire on failure AND cancellation (timeout) so the log always comes back
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           {
-            echo "### Mobile QA (Android) failed — run ${{ github.run_number }}"
+            echo "### Mobile QA (Android) ${{ job.status }} — run ${{ github.run_number }}"
             echo; echo '**build log**'; echo '```'; (grep -n -iE "what went wrong|BUILD FAILED|No space|OutOfMemory" build.log | head -20; echo ...; tail -n 15 build.log) 2>/dev/null || echo "(no build log)"; echo '```'
             echo; echo '**agent log**'; echo '```'; tail -n 90 mobileqa.log 2>/dev/null || echo "(agent did not run)"; echo '```'
             echo; echo '**emulator boot log**'; echo '```'; tail -n 40 emulator.log 2>/dev/null || echo "(emulator.log missing)"; echo '```'
