@@ -26,6 +26,41 @@ app:
     - "Rotate to landscape in two tools; nothing clipped; state kept"
     - "Background the app mid-tool and come back: input is preserved"
   known_issues: []
+  # Route-seeding (agent feature, on main): the explorer opens every tool via the app's URL scheme
+  # so all 30 are entered and explored, not just the handful reachable by tapping from home. On iOS
+  # routes MUST be full URL deep links (the agent opens them with mobile:deepLink). uitest mode
+  # (above) keeps onboarding/paywall out of the way; Pro tools still open so their screens get checked.
+  routes:
+    - tenzy://tool/fitit
+    - tenzy://tool/scan
+    - tenzy://tool/studio
+    - tenzy://tool/video
+    - tenzy://tool/formatfix
+    - tenzy://tool/scrub
+    - tenzy://tool/cleaner
+    - tenzy://tool/qrwifi
+    - tenzy://tool/stitch
+    - tenzy://tool/shareready
+    - tenzy://tool/light
+    - tenzy://tool/contacts
+    - tenzy://tool/measure
+    - tenzy://tool/magnify
+    - tenzy://tool/procam
+    - tenzy://tool/gpsdash
+    - tenzy://tool/audiolab
+    - tenzy://tool/rest
+    - tenzy://tool/colorvision
+    - tenzy://tool/sorted
+    - tenzy://tool/textstudio
+    - tenzy://tool/translate
+    - tenzy://tool/voicenotes
+    - tenzy://tool/livecaptions
+    - tenzy://tool/shield
+    - tenzy://tool/lens
+    - tenzy://tool/memory
+    - tenzy://tool/datagrab
+    - tenzy://tool/describe
+    - tenzy://tool/vault
 
 device:
   platform: ios

@@ -29,6 +29,44 @@ app:
     - "Background the app mid-tool and come back: input is preserved"
     - "Flashlight strobe/SOS and any timer-based tool stop cleanly when leaving the screen"
   known_issues: []
+  # Route-seeding (agent feature, on main): the explorer deep-links into each tool instead of
+  # hoping it taps its way across the 30-tool grid. On Android a route is sent to the launch
+  # activity as the `route` string-extra — equivalent to the CI smoke's
+  #   am start -n com.tenzy.toolkit/com.handytools.app.MainActivity -e route <id>
+  # The non-nil route also skips onboarding, and Pro stays unlocked from the initial `-e route
+  # homepro` launch (same process), so Pro tools open too. route_activity defaults to `activity`.
+  route_extra: route
+  routes:
+    - fitit
+    - scan
+    - studio
+    - video
+    - formatfix
+    - scrub
+    - cleaner
+    - qrwifi
+    - stitch
+    - shareready
+    - light
+    - contacts
+    - measure
+    - magnify
+    - procam
+    - gpsdash
+    - audiolab
+    - rest
+    - colorvision
+    - sorted
+    - textstudio
+    - translate
+    - voicenotes
+    - livecaptions
+    - shield
+    - lens
+    - memory
+    - datagrab
+    - describe
+    - vault
 
 device:
   platform: android
