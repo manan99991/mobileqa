@@ -1,0 +1,122 @@
+# Tenzy QA workflow — drop into manan99991/putt-party-play at .github/workflows/mobileqa.yml
+# Tenzy is NATIVE (Kotlin/Compose on Android, SwiftUI on iOS) — this builds with gradle / xcodebuild,
+# NOT expo prebuild. Copy qa/app.android.yaml and qa/app.ios.yaml from mobileqa/apps/tenzy/ into the repo's qa/.
+#
+# Secrets: ANTHROPIC_API_KEY (optional, for the smart brain). No signing needed — the agent runs on
+# the emulator / simulator (unsigned debug builds).
+
+name: Mobile QA agent
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 7 * * 1"          # weekly deep run
+  workflow_dispatch:
+    inputs:
+      steps: { description: exploration budget, default: "120" }
+
+permissions: { contents: write, checks: write }
+
+env:
+  MOBILEQA_REPO: https://github.com/manan99991/mobileqa
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL; df -h /
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: gradle/actions/setup-gradle@v4
+
+      # ---- NATIVE Android debug build (x86_64 only, for the emulator)
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 --no-daemon 2>&1 | tee ../build.log
+          cp app/build/outputs/apk/debug/app-debug.apk ../app-debug.apk && ls -la ../app-debug.apk
+
+      - name: Install mobileqa + Appium
+        run: |
+          pip install "git+${MOBILEQA_REPO}"
+          npm install -g appium && appium driver install uiautomator2
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+
+      - name: Boot emulator + run agent
+        run: |
+          set +e; exec > >(tee mobileqa.log) 2>&1
+          export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          export ANDROID_AVD_HOME="$HOME/.android/avd"; mkdir -p "$ANDROID_AVD_HOME"
+          yes | sdkmanager "system-images;android-30;google_apis;x86_64" >/dev/null 2>&1 && echo "image ok"
+          echo no | avdmanager --verbose create avd --force --name qa --package "system-images;android-30;google_apis;x86_64" --device pixel_6 2>&1 | tail -4
+          emulator -list-avds | grep -qx qa || { echo "AVD create failed"; exit 1; }
+          nohup emulator -avd qa -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -netdelay none -netspeed full > emulator.log 2>&1 &
+          timeout 180 adb wait-for-device
+          for i in $(seq 1 60); do [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && { echo booted; break; }; sleep 5; done
+          adb shell input keyevent 82 >/dev/null 2>&1 || true
+          nohup appium --relaxed-security --log appium.log >/dev/null 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
+          python -m mobileqa.cli doctor qa/app.android.yaml || true
+          timeout 42m python -m mobileqa.cli ci qa/app.android.yaml --steps ${{ github.event.inputs.steps || 120 }}
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: tenzy-android-report, path: reports/, retention-days: 30 }
+      - name: JUnit summary
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with: { report_paths: reports/**/junit.xml, check_name: Tenzy QA (Android) }
+      - name: Post results on the commit
+        if: ${{ !success() }}
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          { echo "### Tenzy QA (Android) ${{ job.status }}"
+            echo '```'; tail -n 90 mobileqa.log 2>/dev/null; echo '```'
+            echo '```'; tail -n 30 emulator.log 2>/dev/null; echo '```'; } > c.md
+          gh api repos/${{ github.repository }}/commits/${{ github.sha }}/comments -F body=@c.md >/dev/null || true
+
+  # iOS already has a green pipeline in this repo — once it builds HandyTools.app for the simulator,
+  # boot a simulator, start Appium (xcuitest driver), and run: python -m mobileqa.cli ci qa/app.ios.yaml.
+  # Kept manual-only here because macOS runners bill 10x; enable when you want it in the gate.
+  ios:
+    runs-on: macos-15
+    if: github.event_name == 'workflow_dispatch'
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Build HandyTools.app (simulator) — mirror this repo's working iOS CI
+        run: |
+          brew install xcodegen || true
+          xcodegen || true
+          xcodebuild -scheme HandyTools -sdk iphonesimulator -configuration Debug -derivedDataPath build 2>&1 | tail -30
+          echo "APP_PATH=$(find build -name HandyTools.app -path '*Debug-iphonesimulator*' | head -1)" >> $GITHUB_ENV
+      - name: Install mobileqa + Appium + sim
+        run: |
+          pip install "git+${MOBILEQA_REPO}"
+          npm install -g appium && appium driver install xcuitest
+          echo "SIM_UDID=$(xcrun simctl create qa 'iPhone 15' | tail -1)" >> $GITHUB_ENV
+          xcrun simctl boot "$SIM_UDID"
+      - name: Run agent
+        run: |
+          nohup appium --relaxed-security --log appium.log >/dev/null 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
+          python -m mobileqa.cli ci qa/app.ios.yaml --steps ${{ github.event.inputs.steps || 120 }}
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: tenzy-ios-report, path: reports/, retention-days: 30 }
