@@ -36,6 +36,15 @@ class AppConfig:
     ])
     goals: list[str] = field(default_factory=list)           # extra business flows to verify
     known_issues: list[str] = field(default_factory=list)    # suppress noise
+    # Seed routes: jump the explorer straight into every screen instead of hoping it taps its way
+    # there. Without these, a tap-only crawl only reaches whatever is linked off the first screen —
+    # on a 30-tool grid app that is ~8 screens. With them, every tool is entered and explored.
+    #   iOS  : full URLs for the app's URL scheme, e.g. "tenzy://tool/scan"
+    #   Android: intent-extra arg strings appended to the launch intent, e.g. "-e route scan"
+    #            (Tenzy reads intent.getStringExtra("route"); it has NO url scheme on Android).
+    # Give whichever matches the platform the config is for; the explorer seeds each one in turn.
+    deeplinks: list[str] = field(default_factory=list)       # iOS url-scheme deep links
+    launch_routes: list[str] = field(default_factory=list)   # Android intent-extra arg strings
 
 
 @dataclass

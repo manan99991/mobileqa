@@ -48,13 +48,18 @@ class RunResult:
     ended: float = 0.0
     run_dir: Path | None = None
     stopped_reason: str = ""
+    seeded_routes: list[str] = field(default_factory=list)   # screens entered via route-seeding
+    total_routes: int = 0                                    # screens declared for seeding
 
     def summary(self) -> dict:
-        return {"steps": len(self.steps), "duration_s": round(self.ended - self.started, 1),
-                "findings": len(self.findings),
-                "critical": self.findings.count("critical"), "high": self.findings.count("high"),
-                "medium": self.findings.count("medium"), "low": self.findings.count("low"),
-                **self.graph.stats(), "stopped": self.stopped_reason}
+        s = {"steps": len(self.steps), "duration_s": round(self.ended - self.started, 1),
+             "findings": len(self.findings),
+             "critical": self.findings.count("critical"), "high": self.findings.count("high"),
+             "medium": self.findings.count("medium"), "low": self.findings.count("low"),
+             **self.graph.stats(), "stopped": self.stopped_reason}
+        if self.total_routes:
+            s["tools_entered"] = f"{len(self.seeded_routes)}/{self.total_routes}"
+        return s
 
 
 class Explorer:
@@ -131,6 +136,27 @@ class Explorer:
         self.repro = ["(relaunch app)"]
         return self.dev.snapshot()
 
+    def _seed_next(self, step: int) -> ScreenState | None:
+        """Jump into the next un-entered seed route so every screen gets explored, not just the
+        ones reachable by tapping from home. Returns the fresh snapshot, or None if the queue is
+        empty or the launch failed (caller then falls back to normal exploration / stop)."""
+        while self._seeds:
+            route = self._seeds.pop(0)
+            self._seeded.append(route)
+            self._last_seed_step = step
+            self._same_screen_streak = 0
+            log.info("  seed route %s  (%d tools entered, %d queued)",
+                     route, len(self._seeded), len(self._seeds))
+            self.history.append(f"(seed route {route})")
+            self.repro = [f"(open route {route})"]
+            if self.dev.open_route(route):
+                return self.dev.snapshot()
+            # launch command rejected — record it and try the next route
+            self._add([Finding("functional", "medium", "Tool route would not open",
+                               f"Seeding '{route}' did not bring the app to a screen (deep link / intent rejected).",
+                               "", route, step=step)], None)
+        return None
+
     # ---- main loop ----------------------------------------------------------
     def run(self) -> RunResult:
         cfg = self.cfg.run
@@ -144,6 +170,21 @@ class Explorer:
         prev_name = ""
         deadline = result.started + cfg.max_minutes * 60
         vision_every = 6
+
+        # Route-seeding: drive the explorer into every declared screen instead of hoping it taps
+        # its way there. Free exploration runs between seeds; a seed is injected when the brain
+        # exhausts the current area, when it gets stuck, every `seed_interval` steps so coverage
+        # keeps advancing, and — reserving the last steps — one-per-step at the end so every tool
+        # is entered at least once even on a tight step budget. iOS uses url-scheme deep links,
+        # Android an `am start … -e route <id>` intent extra (see AppiumDevice.open_route).
+        self._seeds: list[str] = list(self.dev.seed_routes)
+        self._seeded: list[str] = []
+        self._last_seed_step = 0
+        n_seeds = len(self._seeds)
+        result.total_routes = n_seeds
+        seed_interval = max(10, (cfg.max_steps - n_seeds) // (n_seeds + 1)) if n_seeds else 0
+        if n_seeds:
+            log.info("route-seeding on: %d screens to cover (interval ~%d steps)", n_seeds, seed_interval)
 
         for step in range(1, cfg.max_steps + 1):
             if time.time() > deadline:
@@ -163,6 +204,15 @@ class Explorer:
             if self._handle_system_dialog(state):
                 state = self.dev.snapshot()
                 continue
+
+            # 0b) keep coverage moving: seed the next screen on the interval, and drain any
+            # remaining screens in the reserved tail so every tool is entered before the budget ends.
+            if self._seeds and (step - self._last_seed_step >= seed_interval
+                                or step > cfg.max_steps - len(self._seeds)):
+                seeded_state = self._seed_next(step)
+                if seeded_state is not None:
+                    state, prev_state, prev_action, prev_name = seeded_state, None, None, ""
+                    continue
 
             # 1) perceive + name + coverage
             existing = self.graph.nodes.get(state.fingerprint)
@@ -206,13 +256,25 @@ class Explorer:
 
             keys = self._add(fs, shot)
 
-            # 5) stuck? nudge
+            # 5) stuck? seed the next screen if we have one, else nudge back
             action = res.action
             if self._same_screen_streak >= 8 and action.kind not in ("back", "done"):
+                seeded_state = self._seed_next(step)
+                if seeded_state is not None:
+                    state, prev_state, prev_action, prev_name = seeded_state, None, None, ""
+                    continue
                 log.info("  stuck on %s for %d steps — pressing back", node.name, self._same_screen_streak)
                 action = Action("back", reason="stuck", expectation="leave this screen")
                 self._same_screen_streak = 0
             if action.kind == "done":
+                # Not actually done while screens remain un-entered — jump to the next one.
+                seeded_state = self._seed_next(step)
+                if seeded_state is not None:
+                    self.steps.append(StepRecord(step, state.fingerprint, node.name, action.to_dict(),
+                                                 seeded_state.fingerprint, "", True, "seeding next tool",
+                                                 keys, shot, int((time.time() - t0) * 1000)))
+                    state, prev_state, prev_action, prev_name = seeded_state, None, None, ""
+                    continue
                 result.stopped_reason = "brain says app exhausted"
                 self.steps.append(StepRecord(step, state.fingerprint, node.name, action.to_dict(), state.fingerprint, node.name,
                                              True, res.verdict_note, keys, shot, int((time.time() - t0) * 1000)))
@@ -263,6 +325,9 @@ class Explorer:
             for f in self.links.check_pending():
                 f.screen_name = f.screen
                 self.findings.add(f)
+        result.seeded_routes = list(self._seeded)
+        if result.total_routes:
+            log.info("coverage: entered %d/%d declared tools", len(self._seeded), result.total_routes)
         result.ended = time.time()
         self._flush(result)
         return result

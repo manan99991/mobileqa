@@ -5,6 +5,7 @@ from a finger: multi-finger pinch, double/triple tap, long press, drag with hold
 """
 from __future__ import annotations
 
+import logging
 import time
 
 from appium import webdriver
@@ -19,6 +20,8 @@ from selenium.webdriver.common.actions.pointer_input import PointerInput
 from ..config import Config
 from .base import Device, ScreenState
 from .parse import parse_source
+
+log = logging.getLogger("mobileqa.driver")
 
 
 class AppiumDevice(Device):
@@ -127,6 +130,44 @@ class AppiumDevice(Device):
                 self.driver.quit()
             finally:
                 self.driver = None
+
+    @property
+    def seed_routes(self) -> list[str]:
+        """Platform-appropriate seed routes from the app config (see AppConfig)."""
+        a = self.cfg.app
+        return list(a.deeplinks if self.platform == "ios" else a.launch_routes)
+
+    def open_route(self, spec: str) -> bool:
+        """Jump straight into a screen via a seed route, returning the app to foreground.
+
+        iOS: `spec` is a url-scheme link (contains '://'), opened with `mobile: deepLink`.
+        Android: `spec` is intent-extra args (e.g. "-e route scan") appended to an `am start`
+        of the launch activity via `mobile: shell` — the exact command the CI smoke test proved
+        works for all 30 Tenzy tools. Returns True if the launch command was accepted.
+        """
+        if self.driver is None:
+            self.launch()
+        assert self.driver
+        try:
+            if "://" in spec:                       # iOS url-scheme deep link
+                args: dict = {"url": spec}
+                if self.app_id:
+                    args["bundleId"] = self.app_id
+                self.driver.execute_script("mobile: deepLink", args)
+            else:                                   # Android intent extra on the launch activity
+                a = self.cfg.app
+                if not a.package:
+                    log.warning("seed route %r needs app.package set; skipping", spec)
+                    return False
+                comp = f"{a.package}/{a.activity}" if a.activity else a.package
+                flag = "-n" if a.activity else "-p"
+                cmd = ["start", flag, comp] + spec.split()
+                self.driver.execute_script("mobile: shell", {"command": "am", "args": cmd})
+            time.sleep(self.cfg.run.launch_wait_s)
+            return True
+        except WebDriverException as e:
+            log.warning("seed route %r failed: %s", spec, e)
+            return False
 
     def app_in_foreground(self) -> bool:
         assert self.driver

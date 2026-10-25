@@ -29,6 +29,41 @@ app:
     - "Background the app mid-tool and come back: input is preserved"
     - "Flashlight strobe/SOS and any timer-based tool stop cleanly when leaving the screen"
   known_issues: []
+  # Route-seeding: the agent jumps straight into every tool via `am start … -e route <id>` (the same
+  # intent extra the CI smoke uses), instead of hoping it taps its way across the 30-tool grid. Each
+  # carries `-e uitest true` so onboarding/paywall interstitials are skipped and the tool renders.
+  # Pro stays unlocked from the initial `-e route homepro` launch (same process), so Pro tools open too.
+  launch_routes:
+    - "-e route fitit -e uitest true"
+    - "-e route scan -e uitest true"
+    - "-e route studio -e uitest true"
+    - "-e route video -e uitest true"
+    - "-e route formatfix -e uitest true"
+    - "-e route scrub -e uitest true"
+    - "-e route cleaner -e uitest true"
+    - "-e route qrwifi -e uitest true"
+    - "-e route stitch -e uitest true"
+    - "-e route shareready -e uitest true"
+    - "-e route light -e uitest true"
+    - "-e route contacts -e uitest true"
+    - "-e route measure -e uitest true"
+    - "-e route magnify -e uitest true"
+    - "-e route procam -e uitest true"
+    - "-e route gpsdash -e uitest true"
+    - "-e route audiolab -e uitest true"
+    - "-e route rest -e uitest true"
+    - "-e route colorvision -e uitest true"
+    - "-e route sorted -e uitest true"
+    - "-e route textstudio -e uitest true"
+    - "-e route translate -e uitest true"
+    - "-e route voicenotes -e uitest true"
+    - "-e route livecaptions -e uitest true"
+    - "-e route shield -e uitest true"
+    - "-e route lens -e uitest true"
+    - "-e route memory -e uitest true"
+    - "-e route datagrab -e uitest true"
+    - "-e route describe -e uitest true"
+    - "-e route vault -e uitest true"
 
 device:
   platform: android
