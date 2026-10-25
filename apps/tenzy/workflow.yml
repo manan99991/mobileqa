@@ -8,7 +8,7 @@
 name: Mobile QA agent
 on:
   push:
-    branches: [main]
+    branches: [main, handytools]   # set to this repo's active branch (putt-party-play's is 'handytools')
   schedule:
     - cron: "23 7 * * 1"          # weekly deep run
   workflow_dispatch:
@@ -40,7 +40,7 @@ jobs:
         working-directory: android
         run: |
           set -o pipefail
-          ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 --no-daemon 2>&1 | tee ../build.log
+          ./gradlew :app:assembleDebug --no-daemon 2>&1 | tee ../build.log
           cp app/build/outputs/apk/debug/app-debug.apk ../app-debug.apk && ls -la ../app-debug.apk
 
       - name: Install mobileqa + Appium
