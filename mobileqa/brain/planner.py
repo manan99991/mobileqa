@@ -268,5 +268,5 @@ def make_brain(cfg: Config) -> Brain:
     llm = LLM(cfg.run.model)
     if llm.available:
         return ClaudeBrain(cfg, llm, LLM(cfg.run.vision_model))
-    log.warning("ANTHROPIC_API_KEY not set — running with the heuristic brain (systematic, less insightful)")
+    log.warning("No LLM backend (set MOBILEQA_LLM_BASE_URL+MOBILEQA_LLM_API_KEY for a free vision model like Gemini, or ANTHROPIC_API_KEY) — running the heuristic brain (systematic, less insightful)")
     return HeuristicBrain(cfg)
