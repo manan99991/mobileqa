@@ -141,8 +141,19 @@ class AppiumDevice(Device):
             if not act:
                 raise RuntimeError("route-seeding needs app.activity (the activity that reads the route extra), or a URL route")
             component = act if "/" in act else f"{self.app_id}/{act if '.' in act else '.' + act}"
-            self.driver.execute_script("mobile: startActivity",
-                                       {"intent": component, "extras": [["s", a.route_extra, route]]})
+            # Deliver the route as a string extra exactly the way adb proves works:
+            #   am start -n <component> -e <route_extra> <route>
+            # UiAutomator2's `mobile: startActivity` extras are unreliable — the extra frequently
+            # never reaches the app (observed: every seeded route landed back on home). `mobile:
+            # shell` runs the real am command (Appium must be started with --relaxed-security) and
+            # the extra arrives; fall back to startActivity only if shell is disabled.
+            try:
+                self.driver.execute_script(
+                    "mobile: shell",
+                    {"command": "am", "args": ["start", "-n", component, "-e", a.route_extra, route]})
+            except WebDriverException:
+                self.driver.execute_script("mobile: startActivity",
+                                           {"intent": component, "extras": [["s", a.route_extra, route]]})
         except WebDriverException as e:
             raise RuntimeError(f"could not open route {route!r}: {e}") from e
 
