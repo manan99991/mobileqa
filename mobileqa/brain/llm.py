@@ -115,7 +115,7 @@ class LLM:
                 if u:
                     self.in_tokens += getattr(u, "prompt_tokens", 0) or 0
                     self.out_tokens += getattr(u, "completion_tokens", 0) or 0
-                text = resp.choices[0].message.content or ""
+                text = _openai_text(resp)
                 return parse_json(text)
             except Exception as e:  # noqa: BLE001
                 last_err = e
@@ -140,3 +140,24 @@ def parse_json(text: str) -> dict:
             except json.JSONDecodeError:
                 pass
     raise ValueError(f"model did not return JSON: {text[:200]}")
+
+
+def _openai_text(resp) -> str:
+    """Pull the assistant text out of an OpenAI-style chat response.
+
+    The return shape varies across SDK majors and OpenAI-compatible endpoints: some give a
+    ChatCompletion object (resp.choices[0].message.content), some a dict of the same shape, and some
+    — e.g. openai 3.x against GitHub Models — return the content as a plain string. Handle all three
+    so a bare-string return never silently falls the brain back to the heuristic planner.
+    """
+    if isinstance(resp, str):
+        return resp
+    try:
+        return resp.choices[0].message.content or ""
+    except AttributeError:
+        pass
+    try:
+        return resp["choices"][0]["message"]["content"] or ""
+    except (KeyError, IndexError, TypeError):
+        pass
+    return str(resp)

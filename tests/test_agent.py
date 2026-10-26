@@ -321,3 +321,46 @@ def test_llm_json_parser():
     assert parse_json('text {"b": [1,2]} trailing')["b"] == [1, 2]
     with pytest.raises(ValueError):
         parse_json("no json here")
+
+
+def test_openai_text_handles_str_object_and_dict():
+    """Response shape varies by SDK/endpoint; all three must yield the content text."""
+    from mobileqa.brain.llm import _openai_text
+
+    # openai 3.x against GitHub Models returns the content as a plain string
+    assert _openai_text('{"action":"tap"}') == '{"action":"tap"}'
+    # dict-shaped response
+    assert _openai_text({"choices": [{"message": {"content": "hello"}}]}) == "hello"
+
+    # ChatCompletion-object-shaped response
+    class _N:
+        pass
+    msg = _N(); msg.content = "world"
+    choice = _N(); choice.message = msg
+    obj = _N(); obj.choices = [choice]
+    assert _openai_text(obj) == "world"
+
+
+def test_llm_openai_path_accepts_bare_string_return():
+    """Regression: a bare-string completion (openai 3.x + GitHub Models) must parse, not crash the
+    brain to heuristic with "'str' object has no attribute 'choices'"."""
+    from mobileqa.brain.llm import LLM
+
+    llm = LLM.__new__(LLM)   # bypass __init__ — no network, no keys
+    llm.model, llm.max_retries = "openai/gpt-4o-mini", 1
+    llm.calls = llm.in_tokens = llm.out_tokens = 0
+    llm._kind = "openai"
+
+    class _Completions:
+        def create(self, **kw):
+            return '{"thought":"ok","action":{"kind":"back"}}'   # a string, like GitHub Models returns
+
+    class _Chat:
+        completions = _Completions()
+
+    class _Client:
+        chat = _Chat()
+
+    llm._client = _Client()
+    out = llm.json("system", "user")
+    assert out["action"]["kind"] == "back"
