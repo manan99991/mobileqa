@@ -1,0 +1,35 @@
+# Free, zero-setup check: can a workflow's built-in GITHUB_TOKEN call GitHub Models?
+# If yes, the mobileqa brain gets a smart LLM with NO new key from anyone. Public repo => free minutes.
+name: Brain smoke (GitHub Models)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  models: read
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call GitHub Models with the built-in Actions token
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "POST https://models.github.ai/inference/chat/completions (model openai/gpt-4o-mini)"
+          code=$(curl -sS -o resp.json -w "%{http_code}" \
+            https://models.github.ai/inference/chat/completions \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -d '{"model":"openai/gpt-4o-mini","messages":[{"role":"user","content":"Reply with exactly: OK"}],"max_tokens":10}') || true
+          echo "HTTP_STATUS=$code"
+          echo "----- response body -----"; cat resp.json 2>/dev/null; echo ""; echo "-------------------------"
+          if [ "$code" = "200" ]; then
+            echo "RESULT: GitHub Models WORKS with the Actions token — zero owner setup needed."
+          elif [ "$code" = "401" ] || [ "$code" = "403" ]; then
+            echo "RESULT: Actions token lacks Models access — a GitHub PAT with models:read would be needed."
+          else
+            echo "RESULT: unexpected status $code — see body above."
+          fi
