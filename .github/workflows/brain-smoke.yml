@@ -13,7 +13,7 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Call GitHub Models with the built-in Actions token
+      - name: Call GitHub Models with the built-in Actions token (curl)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -26,10 +26,29 @@ jobs:
             -d '{"model":"openai/gpt-4o-mini","messages":[{"role":"user","content":"Reply with exactly: OK"}],"max_tokens":10}') || true
           echo "HTTP_STATUS=$code"
           echo "----- response body -----"; cat resp.json 2>/dev/null; echo ""; echo "-------------------------"
-          if [ "$code" = "200" ]; then
-            echo "RESULT: GitHub Models WORKS with the Actions token — zero owner setup needed."
-          elif [ "$code" = "401" ] || [ "$code" = "403" ]; then
-            echo "RESULT: Actions token lacks Models access — a GitHub PAT with models:read would be needed."
-          else
-            echo "RESULT: unexpected status $code — see body above."
-          fi
+
+      # Replicate the mobileqa brain's EXACT call (openai SDK, content as a parts-list) and dump the
+      # response shape, so we can see why brain/llm.py hit "'str' object has no attribute 'choices'".
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Call via the openai SDK (what the brain does) and print the response shape
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pip -q install "openai>=1.0" >/dev/null
+          python - <<'PY'
+          import os, openai
+          from openai import OpenAI
+          print("openai version:", openai.__version__)
+          c = OpenAI(api_key=os.environ["GH_TOKEN"], base_url="https://models.github.ai/inference")
+          r = c.chat.completions.create(
+              model="openai/gpt-4o-mini", max_tokens=20, temperature=0.2,
+              messages=[{"role":"system","content":"Return only JSON."},
+                        {"role":"user","content":[{"type":"text","text":"Reply with JSON {\"ok\":true}"}]}])
+          print("TYPE:", type(r).__name__)
+          print("REPR:", repr(r)[:900])
+          try:
+              print("CONTENT:", r.choices[0].message.content)
+          except Exception as e:
+              print("CHOICES-ACCESS-FAILED:", type(e).__name__, e)
+          PY
