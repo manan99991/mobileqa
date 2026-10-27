@@ -364,3 +364,34 @@ def test_llm_openai_path_accepts_bare_string_return():
     llm._client = _Client()
     out = llm.json("system", "user")
     assert out["action"]["kind"] == "back"
+
+
+def test_openai_no_vision_drops_images_and_sends_plain_string(monkeypatch):
+    """With MOBILEQA_NO_VISION set (text-only providers like Groq gpt-oss), screenshots must be
+    dropped and the user content sent as a plain string, so a text model never errors on image parts."""
+    from mobileqa.brain.llm import LLM
+
+    monkeypatch.setenv("MOBILEQA_NO_VISION", "1")
+    seen = {}
+
+    class _Completions:
+        def create(self, **kw):
+            seen["messages"] = kw["messages"]
+            return '{"action":{"kind":"back"}}'
+
+    class _Chat:
+        completions = _Completions()
+
+    class _Client:
+        chat = _Chat()
+
+    llm = LLM.__new__(LLM)
+    llm.model, llm.max_retries = "openai/gpt-oss-120b", 1
+    llm.calls = llm.in_tokens = llm.out_tokens = 0
+    llm._kind, llm._client = "openai", _Client()
+
+    out = llm.json("system", "pick an action", images=[b"\x89PNGfake"])
+    user_content = seen["messages"][1]["content"]
+    assert isinstance(user_content, str)           # not a parts-list
+    assert "image_url" not in str(user_content)     # screenshot dropped
+    assert out["action"]["kind"] == "back"

@@ -99,12 +99,15 @@ class LLM:
         raise RuntimeError(f"LLM failed after retries: {last_err}")
 
     def _json_openai(self, system, user, images, max_tokens) -> dict:
+        if os.environ.get("MOBILEQA_NO_VISION"):
+            images = None  # text-only provider (e.g. Groq gpt-oss): skip screenshots, reason over the element tree
         parts: list[dict] = []
         for png in images or []:
             b64, mt = shrink_png(png)
             parts.append({"type": "image_url", "image_url": {"url": f"data:{mt};base64,{b64}"}})
-        parts.append({"type": "text", "text": user})
-        messages = [{"role": "system", "content": system}, {"role": "user", "content": parts}]
+        # With images: a content parts-list. Text-only: a plain string (max compatibility with text models).
+        user_content = [*parts, {"type": "text", "text": user}] if parts else user
+        messages = [{"role": "system", "content": system}, {"role": "user", "content": user_content}]
         last_err: Exception | None = None
         for attempt in range(self.max_retries):
             try:

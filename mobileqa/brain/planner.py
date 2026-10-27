@@ -3,6 +3,7 @@ no-API fallback (systematic but not clever). Both expose the same interface."""
 from __future__ import annotations
 
 import logging
+import os
 import random
 import re
 from dataclasses import dataclass, field
@@ -244,8 +245,8 @@ class ClaudeBrain(Brain):
         return StepResult(action, name, findings, bool(v.get("ok", True)), str(v.get("note", "")))
 
     def inspect_screenshot(self, png, platform, screen_name, fingerprint, step):
-        if not self.vision.available:
-            return [], []
+        if os.environ.get("MOBILEQA_NO_VISION") or not self.vision.available:
+            return [], []  # text-only provider: no screenshot review, skip the wasted call
         try:
             data = self.vision.json(prompts.VISION_SYSTEM.format(platform=platform, screen=screen_name),
                                     "Review this screen.", images=[png], max_tokens=1200)
