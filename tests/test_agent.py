@@ -395,3 +395,39 @@ def test_openai_no_vision_drops_images_and_sends_plain_string(monkeypatch):
     assert isinstance(user_content, str)           # not a parts-list
     assert "image_url" not in str(user_content)     # screenshot dropped
     assert out["action"]["kind"] == "back"
+
+
+def test_openai_reasoning_effort_passed_as_extra_body(monkeypatch):
+    """MOBILEQA_REASONING_EFFORT must reach the provider as extra_body={"reasoning_effort": ...} so a
+    reasoning model (e.g. Groq gpt-oss) caps its thinking and leaves room for the final JSON. When the
+    env var is unset, no extra_body is sent, so non-reasoning providers are untouched."""
+    from mobileqa.brain.llm import LLM
+
+    seen = {}
+
+    class _Completions:
+        def create(self, **kw):
+            seen.clear(); seen.update(kw)
+            return '{"action":{"kind":"back"}}'
+
+    class _Chat:
+        completions = _Completions()
+
+    class _Client:
+        chat = _Chat()
+
+    def make():
+        llm = LLM.__new__(LLM)
+        llm.model, llm.max_retries = "openai/gpt-oss-120b", 1
+        llm.calls = llm.in_tokens = llm.out_tokens = 0
+        llm._kind, llm._client = "openai", _Client()
+        return llm
+
+    monkeypatch.setenv("MOBILEQA_REASONING_EFFORT", "low")
+    out = make().json("system", "pick an action")
+    assert seen.get("extra_body") == {"reasoning_effort": "low"}   # configured -> passed through
+    assert out["action"]["kind"] == "back"
+
+    monkeypatch.delenv("MOBILEQA_REASONING_EFFORT", raising=False)
+    make().json("system", "pick an action")
+    assert "extra_body" not in seen                                 # unset -> nothing sent

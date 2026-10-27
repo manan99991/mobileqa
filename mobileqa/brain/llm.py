@@ -108,11 +108,20 @@ class LLM:
         # With images: a content parts-list. Text-only: a plain string (max compatibility with text models).
         user_content = [*parts, {"type": "text", "text": user}] if parts else user
         messages = [{"role": "system", "content": system}, {"role": "user", "content": user_content}]
+        extra_body: dict = {}
+        effort = os.environ.get("MOBILEQA_REASONING_EFFORT")
+        if effort:
+            # Reasoning models (e.g. Groq gpt-oss) spend output tokens "thinking"; capping the effort
+            # keeps the final JSON inside max_tokens instead of being truncated to an empty answer
+            # (and keeps each navigation decision fast over a long run). Only sent when configured, so
+            # non-reasoning providers are unaffected.
+            extra_body["reasoning_effort"] = effort
+        extra = {"extra_body": extra_body} if extra_body else {}
         last_err: Exception | None = None
         for attempt in range(self.max_retries):
             try:
                 resp = self._client.chat.completions.create(
-                    model=self.model, max_tokens=max_tokens, temperature=0.2, messages=messages)
+                    model=self.model, max_tokens=max_tokens, temperature=0.2, messages=messages, **extra)
                 self.calls += 1
                 u = getattr(resp, "usage", None)
                 if u:
