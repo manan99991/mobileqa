@@ -78,6 +78,18 @@ PATTERNS: list[Pattern] = [
         since="2026-10-31",
     ),
     Pattern(
+        id="promised-auto-is-manual",
+        title="A behavior the tool promises as automatic is actually off / manual",
+        defect_class="functional", severity="high",
+        probe="Read what the tool/How-to says it does ('automatically', 'auto', 'hides X for you', 'detects and …'). "
+              "Then run it on the sample WITHOUT touching any toggle and check the promised thing actually happened.",
+        tell="If the copy says something happens automatically but the user must flip a switch / select items for it "
+             "to happen, that's a defect — expected: it's on by default; actual: detected-but-off. (e.g. a privacy "
+             "scrubber that finds plates/numbers but leaves them unchecked.)",
+        learned_from="scrub — detected text (plates, numbers) was off by default despite 'auto-hide personal info'",
+        since="2026-10-31",
+    ),
+    Pattern(
         id="thin-options",
         title="Fewer options offered than the tool can support",
         defect_class="ux", severity="medium",
