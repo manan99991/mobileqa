@@ -20,6 +20,11 @@ app:
   #   memory datagrab describe vault
   goals:
     - "Open every one of the 30 tools (fitit, scan, studio, video, formatfix, scrub, cleaner, qrwifi, stitch, shareready, light, contacts, measure, magnify, procam, gpsdash, audiolab, rest, colorvision, sorted, textstudio, translate, voicenotes, livecaptions, shield, lens, memory, datagrab, describe, vault) and exercise each with sensible input, checking the result is correct"
+    - "Run each tool's PRIMARY action to completion with the preloaded sample and verify the result actually appears and is correct"
+    - "Every tool that produces a file SHOWS a preview of the output — a photo/PDF thumbnail or a playable video — not just size/percentage stats and a Save/Share button"
+    - "No visible control is a dead end: every button, chip, toggle and 'Add/Save/Apply/Submit' either does something or the screen clearly says why it can't (type into a field, then tap its adjacent action)"
+    - "Every produced image, preview or exported page actually contains content — never a blank white/grey/black rectangle (watch Long Screenshot, Studio, Scan, Format Fixer especially)"
+    - "Converters/exporters offer all the formats they support, chooseable per file type (photos and videos set separately for a mixed batch)"
     - "Free tier: the ~8 basic utilities work without Pro; AI and output tools show the Pro paywall, never a blank screen"
     - "Paywall shows $19.99/year, 3-day free trial, auto-renew and cancel terms; 'free' never appears without 'optional Pro subscription'"
     - "Every screen, modal and sub-screen has a visible Back or Done (store-review dead-end check)"

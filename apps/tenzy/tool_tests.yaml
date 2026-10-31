@@ -1,0 +1,57 @@
+# Tenzy — per-tool test invariants (extend this as tools change).
+#
+# These are the checks the agent should satisfy for each of the 30 tools, on top of the cross-tool
+# LEARNED DEFECT PATTERNS in mobileqa/brain/playbook.py. The app's `goals:` steer the agent at a high
+# level; this file is the concrete per-tool contract a human can read and tick off.
+#
+# Grouped by what a tool returns, because that decides which invariants bite:
+#   produces_file  -> runs to a saved/shareable output: MUST show a preview + output must not be blank.
+#   on_screen      -> returns a result on screen (text/value/verdict/list): the result must appear & be right.
+#   live_no_file   -> a live/sensor/utility screen with no saved output: timers/sensors must stop on leave.
+#
+# Every tool, regardless of group, also owes: no dead controls; a visible Back/Done; no blank screen;
+# its primary action works on the preloaded sample first-try and never consumes quota on failure.
+
+global_invariants:
+  - primary_action_runs: "the main button completes on the preloaded sample and shows a result"
+  - no_dead_controls: "every visible control does something or says why it can't (playbook: dead-control)"
+  - has_exit: "a visible Back or Done exists on every screen/sub-screen"
+  - quota_safe: "a failed/blocked operation does not consume the free-tier quota"
+
+tools:
+  # ── produces_file: must preview the output, output must not be blank ──────────────────────────
+  fitit:       {group: produces_file, does: "shrink the sample under a size limit", expect: "a fitted photo/video/PDF", preview: required}
+  formatfix:   {group: produces_file, does: "convert photos/videos to a chosen format", expect: "converted files, labelled with their new format", preview: required, also: "offers all formats per type (playbook: thin-options)"}
+  studio:      {group: produces_file, does: "shrink / cut-out background / redact / ID photo / strip location", expect: "an edited photo or video", preview: required}
+  video:       {group: produces_file, does: "shrink / trim / convert / GIF / mute / extract audio", expect: "a processed video, GIF or audio file", preview: required}
+  scrub:       {group: produces_file, does: "blur faces/plates and strip metadata", expect: "a redacted photo or video", preview: required, also: "redaction is irreversible; metadata gone"}
+  stitch:      {group: produces_file, does: "stitch the sample screenshots into one tall image", expect: "one tall image containing the pages", preview: required, also: "CRITICAL blank-output watch (was all-white)"}
+  scan:        {group: produces_file, does: "scan/import, clean up, Sign & fill, export", expect: "a searchable PDF; stamps/signatures land on the page", preview: required, also: "Sign&fill Add must work while drawing (playbook: dead-control)"}
+  procam:      {group: produces_file, does: "capture a photo (incl. RAW)", expect: "a saved photo", preview: required}
+  shareready:  {group: produces_file, does: "make a QR/Wi-Fi code; send a file nearby", expect: "a generated code image / a transfer that starts", preview: required}
+  datagrab:    {group: produces_file, does: "extract a table/contact/text from the sample", expect: "structured data + an export (CSV/vCard)", preview: optional, also: "the extracted result must be shown, not blank"}
+  qrwifi:      {group: produces_file, does: "scan a code; generate a QR for link/Wi-Fi/contact", expect: "a scan result and/or a generated QR image", preview: required}
+  # datagrab is listed here under produces_file.
+
+  # ── on_screen: the result must appear and be correct ─────────────────────────────────────────
+  cleaner:     {group: on_screen, does: "find duplicates/screenshots/big files + tidy contacts", expect: "categorised items + a recoverable trash; freed-space total", preview: no}
+  contacts:    {group: on_screen, does: "find duplicate contacts, merge, export .vcf", expect: "duplicate groups + a .vcf backup", preview: no}
+  measure:     {group: on_screen, does: "measure with the AR ruler", expect: "a distance read-out", preview: no}
+  colorvision: {group: on_screen, does: "identify / adjust colour", expect: "colour values / a filtered view", preview: optional}
+  sorted:      {group: on_screen, does: "(verify in-app) sort/triage items", expect: "a sorted/triaged result", preview: optional}
+  textstudio:  {group: on_screen, does: "read/clean/transform text (OCR etc.)", expect: "the extracted/edited text, selectable", preview: no}
+  translate:   {group: on_screen, does: "translate text / camera / voice", expect: "a translation; same-language input is handled gracefully", preview: no}
+  voicenotes:  {group: on_screen, does: "record, transcribe, trim", expect: "a transcript + playable audio", preview: audio}
+  livecaptions: {group: on_screen, does: "caption live audio", expect: "captions appear as audio plays", preview: no}
+  shield:      {group: on_screen, does: "check a suspicious text/link/number/QR", expect: "a scam verdict with the reasons", preview: no}
+  lens:        {group: on_screen, does: "answer a question about the sample image", expect: "a relevant answer", preview: no}
+  describe:    {group: on_screen, does: "describe the sample image", expect: "an accurate description", preview: no}
+  memory:      {group: on_screen, does: "(verify in-app) save/recall items", expect: "saved items persist and recall", preview: no}
+
+  # ── live_no_file: utility/sensor screens — stop cleanly on leave ──────────────────────────────
+  light:       {group: live_no_file, does: "flashlight: strobe / SOS / Morse / screen light / mirror", expect: "light responds", must: "strobe/SOS stop when leaving the screen"}
+  magnify:     {group: live_no_file, does: "magnifier live view", expect: "zoom/brightness controls work", must: "camera releases on leave"}
+  gpsdash:     {group: live_no_file, does: "drop a GPS pin / show the walk back", expect: "a pin + distance", must: "location stops on leave"}
+  audiolab:    {group: live_no_file, does: "enhance speech / level audio", expect: "processed audio playback", preview: audio}
+  rest:        {group: live_no_file, does: "(verify in-app) a timer/break tool", expect: "the timer runs", must: "timer stops cleanly on leave"}
+  vault:       {group: live_no_file, does: "clipboard / notification vault", expect: "saved clips list; copy works", must: "nothing is auto-exfiltrated"}

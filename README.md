@@ -90,6 +90,14 @@ Each step the brain gets: the previous action and what it expected, the screen b
 
 Destructive actions are never taken unless `allow_destructive: true`; the `forbidden_texts` list is enforced in code, not just in the prompt.
 
+## How it learns (the playbook)
+
+The tester compounds: every real defect found and fixed is generalised to its *class* and added once to `mobileqa/brain/playbook.py`. From then on the agent probes **every** tool for that pattern on every run — each entry is injected into both the action brain (what to try + what counts as a bug) and the vision brain (what to look for in the screenshot). So a bug found in one tool becomes a permanent check across all of them, instead of being re-found by luck.
+
+Seeded patterns (from the 2026-10-31 Tenzy review): **dead-control** (a control that looks actionable but does nothing / is disabled with no reason), **blank-output** (a produced result/preview that comes back blank), **result-no-preview** (a result described with stats but never shown), **thin-options** (a converter offering fewer formats than the platform supports). The heuristic (no-API) brain files the dead-control one deterministically too.
+
+To add one when you fix a bug: append a `Pattern` to `playbook.py` (probe, tell, severity, where/when learned); if it's catchable deterministically, add a check in `mobileqa/checks/` as well. `apps/<app>/tool_tests.yaml` holds the per-tool contract (what each tool produces and which invariants bite). `tests/test_playbook.py` keeps the mechanism honest.
+
 ## iOS without a Mac
 
 Appium is a wire protocol, so a device cloud works unchanged: set `device.appium_url` to the provider's hub and put their caps in `device.extra_caps` (BrowserStack: `bstack:options` with `userName`/`accessKey`, app uploaded via their REST API; Sauce Labs / LambdaTest similar). `ci/mobileqa.yml` already builds iOS on GitHub's macOS runners, which is the cheapest path.

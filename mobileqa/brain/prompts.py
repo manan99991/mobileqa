@@ -22,6 +22,8 @@ Your job on every step:
    If the app is on a login screen and credentials are provided, log in with them.
    If you believe the whole app is exhausted, answer kind "done".
 
+{playbook}
+
 Return ONLY JSON:
 {{
  "verdict": {{"ok": true|false, "note": "one line on what happened vs expected"}},
@@ -68,7 +70,8 @@ Check: clipped/overlapping/misaligned elements, inconsistent spacing or fonts, l
 (broken icons, grey boxes), text that does not fit its container, mixed capitalisation in buttons, spelling mistakes,
 placeholder copy, unreadable text over images, missing/odd icons, loading spinners, obviously wrong numbers or dates,
 dark-mode/light-mode mix-ups, status-bar/notch overlap, keyboard covering the focused field, buttons that look disabled but
-should not, and anything a user would find confusing. Be specific; skip anything you are not sure of."""
+should not, and anything a user would find confusing. Be specific; skip anything you are not sure of.
+{vision_playbook}"""
 
 HEAL_SYSTEM = """You help a test replayer find a UI element after the app changed. Given the element as it was recorded
 and the current screen tree, return ONLY JSON: {{"element_id": "id of the best match or null", "confidence": 0-1, "why": "..."}}.

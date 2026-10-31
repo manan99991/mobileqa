@@ -12,6 +12,7 @@ from ..config import Config
 from ..driver.base import Element, ScreenState
 from ..findings import Finding
 from . import prompts
+from . import playbook
 from .actions import ELEMENT_GESTURES, GESTURES, SCREEN_GESTURES, Action
 from ..checks.ui import looks_like_app_error
 from .data import inputs_for, valid_value
@@ -88,6 +89,7 @@ class HeuristicBrain(Brain):
                        if not any(f in (e.text + " " + e.label).lower() for f in forbidden)
                        and e.type not in ("keyboard",)]
         verdict_ok, note = True, ""
+        findings: list[Finding] = []
         if ctx.prev_action and ctx.prev_action.kind in ("tap",) and ctx.transition == "same screen" and ctx.prev_state:
             sig = lambda s: (s.texts, [(e.name, e.checked, e.enabled) for e in s.elements])  # noqa: E731
             if sig(ctx.prev_state) == sig(st):
@@ -95,6 +97,13 @@ class HeuristicBrain(Brain):
                 already_selected = bool(prev_el and prev_el.checked)   # tapping the active tab does nothing, fine
                 note = "" if already_selected else "tap produced no visible change"
                 verdict_ok = already_selected or ctx.prev_action.element_name.lower() in ("", "cancel", "close", "ok", "done")
+                if not verdict_ok:   # learned pattern 'dead-control': a real control that did nothing when tapped
+                    findings.append(Finding(
+                        "functional", "high", "Control does nothing when tapped",
+                        f"Tapping '{ctx.prev_action.element_name}' produced no visible change — no navigation, new "
+                        f"item, feedback or error. If it is disabled, the screen gives no reason. Dead controls are a "
+                        f"release blocker.",
+                        st.fingerprint, name, ctx.prev_action.element_name, source="rule", step=ctx.step))
 
         # 0) the app crashed to its error screen: take its recovery action (Try again / Retry /
         # Reload) if there is one, else go back — never spend the budget flailing on it.
@@ -104,9 +113,9 @@ class HeuristicBrain(Brain):
             if retry:
                 return StepResult(Action("tap", retry.id, retry.name,
                                          reason="recover from the app's error screen",
-                                         expectation="the app leaves the error screen"), name, [], verdict_ok, note)
+                                         expectation="the app leaves the error screen"), name, findings, verdict_ok, note)
             return StepResult(Action("back", reason="leave the app's error screen",
-                                     expectation="a working screen returns"), name, [], verdict_ok, note)
+                                     expectation="a working screen returns"), name, findings, verdict_ok, note)
 
         # 1) forms: fill every empty input with valid data, then submit
         inputs = [e for e in interactive if e.editable]
@@ -116,13 +125,13 @@ class HeuristicBrain(Brain):
             val = valid_value(e, self.cfg.app.login)
             return StepResult(Action("type", e.id, e.name, text=val, data_kind="valid",
                                      reason="fill form with valid data",
-                                     expectation="field accepts the value and shows it"), name, [], verdict_ok, note)
+                                     expectation="field accepts the value and shows it"), name, findings, verdict_ok, note)
         if inputs and all(ctx.coverage.get(e.name, []).count("type") >= 1 for e in inputs):
             submit = next((e for e in interactive if e.type == "button" and re.search(
                 r"sign|log ?in|submit|continue|next|save|search|go|done|confirm|apply|send|create|register", e.name, re.I)), None)
             if submit and "tap" not in ctx.coverage.get(submit.name, []):
                 return StepResult(Action("tap", submit.id, submit.name, reason="submit filled form",
-                                         expectation="form submits; next screen or validation message"), name, [], verdict_ok, note)
+                                         expectation="form submits; next screen or validation message"), name, findings, verdict_ok, note)
             # second+ rounds: edge-case data
             rnd = self.form_phase.get(st.fingerprint, 0)
             if rnd < 3 and submit:
@@ -132,7 +141,7 @@ class HeuristicBrain(Brain):
                 inp = cands[rnd % len(cands)]
                 return StepResult(Action("clear" if False else "type", e.id, e.name, text=inp.value, data_kind=inp.kind,
                                          reason=f"edge-case input ({inp.kind})",
-                                         expectation="app validates gracefully; no crash; clear message"), name, [], verdict_ok, note)
+                                         expectation="app validates gracefully; no crash; clear message"), name, findings, verdict_ok, note)
 
         # 2) least-exercised interactive element, next untried gesture for its type
         best, best_gesture, best_score = None, None, 10 ** 9
@@ -151,22 +160,22 @@ class HeuristicBrain(Brain):
         if best is not None:
             if best_gesture == "type":
                 return StepResult(Action("type", best.id, best.name, text=valid_value(best, self.cfg.app.login), data_kind="valid",
-                                         reason="exercise input", expectation="value appears in field"), name, [], verdict_ok, note)
+                                         reason="exercise input", expectation="value appears in field"), name, findings, verdict_ok, note)
             return StepResult(Action(best_gesture, best.id, best.name, reason="untried gesture on element",
-                                     expectation=_expect(best_gesture, best)), name, [], verdict_ok, note)
+                                     expectation=_expect(best_gesture, best)), name, findings, verdict_ok, note)
 
         # 3) screen-level gestures not yet done here
         done_screen = ctx.coverage.get("@screen", [])
         for g in SCREEN_GESTURES:
             if g in self.cfg.run.gestures and g not in done_screen and g != "back":
                 return StepResult(Action(g, None, "", reason="screen-level gesture",
-                                         expectation="layout survives; state preserved"), name, [], verdict_ok, note)
+                                         expectation="layout survives; state preserved"), name, findings, verdict_ok, note)
 
         # 4) exhausted: go back toward the frontier, or finish
         if ctx.frontier:
             return StepResult(Action("back", reason="screen exhausted; return to under-explored screens",
-                                     expectation="previous screen appears"), name, [], verdict_ok, note)
-        return StepResult(Action("done", reason="everything reachable has been exercised"), name, [], verdict_ok, note)
+                                     expectation="previous screen appears"), name, findings, verdict_ok, note)
+        return StepResult(Action("done", reason="everything reachable has been exercised"), name, findings, verdict_ok, note)
 
 
 def _expect(g: str, e: Element) -> str:
@@ -215,7 +224,7 @@ class ClaudeBrain(Brain):
             screenshot_note="A screenshot of the current screen is attached." if ctx.screenshot else "",
         )
         try:
-            data = self.llm.json(prompts.SYSTEM.format(platform=self.cfg.platform), user,
+            data = self.llm.json(prompts.SYSTEM.format(platform=self.cfg.platform, playbook=playbook.action_block()), user,
                                  images=[ctx.screenshot] if ctx.screenshot else None)
         except Exception as e:  # noqa: BLE001
             log.warning("model step failed, using heuristic: %s", e)
@@ -248,7 +257,8 @@ class ClaudeBrain(Brain):
         if os.environ.get("MOBILEQA_NO_VISION") or not self.vision.available:
             return [], []  # text-only provider: no screenshot review, skip the wasted call
         try:
-            data = self.vision.json(prompts.VISION_SYSTEM.format(platform=platform, screen=screen_name),
+            data = self.vision.json(prompts.VISION_SYSTEM.format(platform=platform, screen=screen_name,
+                                                                 vision_playbook=playbook.vision_block()),
                                     "Review this screen.", images=[png], max_tokens=1200)
         except Exception as e:  # noqa: BLE001
             log.warning("vision failed: %s", e)
