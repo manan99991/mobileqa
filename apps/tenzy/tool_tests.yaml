@@ -28,7 +28,7 @@ tools:
   stitch:      {group: produces_file, does: "stitch the sample screenshots into one tall image", expect: "one tall image containing the pages", preview: required, also: "CRITICAL blank-output watch (was all-white)"}
   scan:        {group: produces_file, does: "scan/import, clean up, Sign & fill, export", expect: "a searchable PDF; stamps/signatures land on the page", preview: required, also: "Sign&fill Add must work while drawing (playbook: dead-control)"}
   procam:      {group: produces_file, does: "capture a photo (incl. RAW)", expect: "a saved photo", preview: required}
-  shareready:  {group: produces_file, does: "make a QR/Wi-Fi code; send a file nearby", expect: "a generated code image / a transfer that starts", preview: required}
+  fileviewer:  {group: produces_file, does: "open a picked file (PDF/Office/iWork/image/text/archive)", expect: "the file previews via QuickLook, or shows its type+size with a working Share fallback", preview: required, also: "must NEVER dead-end on an unpreviewable file (playbook: blank-output / dead-control)"}
   datagrab:    {group: produces_file, does: "extract a table/contact/text from the sample", expect: "structured data + an export (CSV/vCard)", preview: optional, also: "the extracted result must be shown, not blank"}
   qrwifi:      {group: produces_file, does: "scan a code; generate a QR for link/Wi-Fi/contact", expect: "a scan result and/or a generated QR image", preview: required}
   # datagrab is listed here under produces_file.
@@ -42,15 +42,15 @@ tools:
   textstudio:  {group: on_screen, does: "read/clean/transform text (OCR etc.)", expect: "the extracted/edited text, selectable", preview: no}
   translate:   {group: on_screen, does: "translate text / camera / voice", expect: "a translation; same-language input is handled gracefully", preview: no}
   voicenotes:  {group: on_screen, does: "record, transcribe, trim", expect: "a transcript + playable audio", preview: audio}
-  livecaptions: {group: on_screen, does: "caption live audio", expect: "captions appear as audio plays", preview: no}
+  warranty:    {group: on_screen, does: "file a receipt (OCR), search it loosely, track a warranty", expect: "the receipt is saved and found again by a vague/misspelt query; a warranty countdown + reminder", preview: no, also: "fuzzy search tolerates typos ('cosco'→Costco); the receipt image is actually stored and re-openable"}
+  pricecheck:  {group: on_screen, does: "compare true unit prices (incl. snap-to-fill from a photo), cart vs budget, decode a label", expect: "the cheaper-per-unit item flagged with the correct unit, a running budget, a label read-out", preview: no, also: "unit math must be domain-correct — 'oz' is a 31.1 g TROY ounce for gold/silver, not 28.35 g (playbook: wrong-unit-domain); the troy toggle must exist and auto-default for precious metals; snap-to-compare fills rows from a photo"}
+  identify:    {group: on_screen, does: "identify the subject in a photo / read a barcode", expect: "ranked guesses with confidence and/or a decoded barcode, plus a web-search confirm handoff", preview: no, also: "never a dead-end when unsure — always offers the confirm path"}
   shield:      {group: on_screen, does: "check a suspicious text/link/number/QR", expect: "a scam verdict with the reasons", preview: no}
-  lens:        {group: on_screen, does: "answer a question about the sample image", expect: "a relevant answer", preview: no}
-  describe:    {group: on_screen, does: "describe the sample image", expect: "an accurate description", preview: no}
   memory:      {group: on_screen, does: "(verify in-app) save/recall items", expect: "saved items persist and recall", preview: no}
 
   # ── live_no_file: utility/sensor screens — stop cleanly on leave ──────────────────────────────
   light:       {group: live_no_file, does: "flashlight: strobe / SOS / Morse / screen light / mirror", expect: "light responds", must: "strobe/SOS stop when leaving the screen"}
-  magnify:     {group: live_no_file, does: "magnifier live view", expect: "zoom/brightness controls work", must: "camera releases on leave"}
+  seeread:     {group: live_no_file, does: "Read text (aloud/plain/gist), Describe a scene aloud, or Magnify in high contrast — one mode switch", expect: "each mode works; the merged tool replaces Lens+Describe+Magnify", must: "only the active mode's camera/reader runs; it is released when switching mode or leaving (playbook: live-no-file camera/reader release)"}
   gpsdash:     {group: live_no_file, does: "drop a GPS pin / show the walk back", expect: "a pin + distance", must: "location stops on leave"}
   audiolab:    {group: live_no_file, does: "enhance speech / level audio", expect: "processed audio playback", preview: audio}
   rest:        {group: live_no_file, does: "(verify in-app) a timer/break tool", expect: "the timer runs", must: "timer stops cleanly on leave"}

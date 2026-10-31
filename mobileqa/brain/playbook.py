@@ -101,6 +101,24 @@ PATTERNS: list[Pattern] = [
         learned_from="formatfix — only JPG/PNG for photos and no per-type choice for a photos+videos batch",
         since="2026-10-31",
     ),
+    Pattern(
+        id="wrong-unit-domain",
+        title="A computed value uses the wrong unit/standard for the domain",
+        defect_class="value", severity="high",
+        probe="On any tool that converts, compares or computes across units (price per unit, measurement, "
+              "currency, temperature), feed inputs whose correct answer you can compute by hand — including a "
+              "domain where a unit is ambiguous (e.g. 'oz' = 28.35 g for food but a 31.1 g TROY ounce for "
+              "gold/silver/platinum). Check the actual number, not just which item ranks higher.",
+        tell="The result is numerically wrong because the tool used the wrong standard — troy vs avoirdupois "
+             "ounce, US vs imperial gallon/pint, the wrong currency, °C vs °F — even if the relative ordering "
+             "happens to come out right. Expected: the hand-computed value within rounding; actual: a value off "
+             "by a fixed unit factor. The tool must also EXPOSE an ambiguous choice (e.g. a troy-ounce toggle, "
+             "auto-defaulted from context) rather than silently guess one standard.",
+        visual="a per-unit or converted figure that is off by a clean ratio (~1.097 for troy vs standard ounce, "
+               "~1.2 for US vs imperial gallon) from the obviously-correct number.",
+        learned_from="pricecheck — 'oz' was treated as 28.35 g for a gold bar; precious metals use the 31.1 g troy ounce",
+        since="2026-10-31",
+    ),
 ]
 
 
