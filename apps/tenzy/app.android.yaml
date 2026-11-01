@@ -11,67 +11,52 @@ app:
     - https://manan99991.github.io/tenzy/
     - https://manan99991.github.io/tenzy/privacy.html
   allow_destructive: false
-  forbidden_texts: ["Subscribe", "Start free trial", "Buy", "Restore purchases", "Rate", "Send feedback", "Delete"]
+  forbidden_texts: ["Subscribe", "Start free trial", "Buy", "Restore purchases", "Rate", "Send feedback", "Delete forever"]
   # Tenzy is built FOR automated testing: every tool is a deep-link route. The launch below unlocks Pro
   # and enables uitest mode (skips onboarding + paywall + crash dialog) so the agent reaches every tool.
-  # The 30 tool route ids (drive each with: adb shell am start -n com.tenzy.toolkit/com.handytools.app.MainActivity -e route <id>):
-  #   fitit scan studio video formatfix scrub cleaner qrwifi stitch shareready light contacts measure magnify
-  #   procam gpsdash audiolab rest colorvision sorted textstudio translate voicenotes livecaptions shield lens
-  #   memory datagrab describe vault
+  # The REAL Android catalog = 10 power-tool tiles + the folded-in flashlight (drive each with:
+  #   adb shell am start -n com.tenzy.toolkit/com.handytools.app.MainActivity -e route <id>):
+  #   fileviewer docs converter codes scrubber media cleanup instruments safety share  (+ flashlight)
   goals:
-    - "Open every one of the 30 tools (fitit, scan, studio, video, formatfix, scrub, cleaner, qrwifi, stitch, shareready, light, contacts, measure, magnify, procam, gpsdash, audiolab, rest, colorvision, sorted, textstudio, translate, voicenotes, livecaptions, shield, lens, memory, datagrab, describe, vault) and exercise each with sensible input, checking the result is correct"
-    - "Run each tool's PRIMARY action to completion with the preloaded sample and verify the result actually appears and is correct"
-    - "Every tool that produces a file SHOWS a preview of the output — a photo/PDF thumbnail or a playable video — not just size/percentage stats and a Save/Share button"
-    - "No visible control is a dead end: every button, chip, toggle and 'Add/Save/Apply/Submit' either does something or the screen clearly says why it can't (type into a field, then tap its adjacent action)"
-    - "Every produced image, preview or exported page actually contains content — never a blank white/grey/black rectangle (watch Long Screenshot, Studio, Scan, Format Fixer especially)"
-    - "Converters/exporters offer all the formats they support, chooseable per file type (photos and videos set separately for a mixed batch)"
-    - "Free tier: the ~8 basic utilities work without Pro; AI and output tools show the Pro paywall, never a blank screen"
-    - "Paywall shows $19.99/year, 3-day free trial, auto-renew and cancel terms; 'free' never appears without 'optional Pro subscription'"
-    - "Every screen, modal and sub-screen has a visible Back or Done (store-review dead-end check)"
-    - "Ads: an ad slot never covers a control; the app still works if the ad fails to load"
+    - "Open every one of the 10 power tools (fileviewer, docs, converter, codes, scrubber, media, cleanup, instruments, safety, share) plus the folded-in flashlight, and exercise EVERY tab and control in each with sensible input; the result must be correct and visible — report any control that does nothing, any blank/empty result, any crash, any spinner that never ends"
+    - "FILE VIEWER reads content, it does not just list it: for each file type it must open a VIEWER of the actual content — a PDF renders its pages, an image shows, a book (EPUB) and an Office/OpenDocument file (docx/pptx/xlsx/odt/ods/odp) show their TEXT, text/code/CSV/JSON/XML show formatted, a SQLite db shows its tables, an APK shows its manifest. ONLY a true archive (zip/jar/7z/rar/gz) may show a file-listing. A readable document that shows the archive file-listing instead of its content is a defect (playbook: container-as-listing). The header must show the correct type label for the file. See android/qa/fileviewer/file_type_matrix.md for the per-type expected behavior, and the file-type smoke (reports/filetype/*.png) which pushes a corpus of every type."
+    - "File-accepting tools (converter, media, scrubber, docs) must handle the file types they claim: feed each a sample of every type it accepts; every offered format/option runs on the sample first-try and produces a PREVIEWABLE output; a failed/blocked op never dead-ends and never consumes quota"
+    - "This is an internal build with everything unlocked: there must be NO ads, NO paywall, NO 'Go Pro' / quota / limit messages anywhere; report any that appear"
+    - "Every screen, tab, modal and sub-screen has a visible Back or Done and never dead-ends (store-review dead-end check); the back arrow and the tool title never overlap/merge"
+    - "Preview-first: in each tool the thing being worked on (file, photo, page, transcript, result) is shown large above the controls; report any tool that is only buttons and text"
+    - "Text never clips or overflows and the keyboard never covers the field being typed into — tool names, tab chips, card labels, buttons, inputs — in both light and dark mode (toggle dark mode via adb shell cmd uimode night yes/no between passes)"
+    - "Safety: paste the sample scam text, a normal text, a bad link and a 900 number; verdicts must differ sensibly and findings must be explained"
+    - "Docs: pick a page, export a PDF, sign a page, merge two PDFs, search a word; each must produce a real result"
+    - "Media: pick a photo, shrink to under 1 MB, redact a region, strip metadata; each must save and show before/after sizes"
+    - "Clean Up: scan, review a category grid with real thumbnails, move items to Trash, then Restore them; a group of UNIQUE photos must not be offered as duplicates"
+    - "Flashlight: strobe/SOS/Morse start and STOP cleanly when leaving the screen; Instruments level/compass readouts change when the device moves (emulator sensors may be static — note, don't fail)"
+    - "Rotate to landscape in two tools; nothing clipped; state kept. Background the app mid-tool and return: input preserved"
     - "Privacy policy and every external link open and are not 404"
-    - "Rotate to landscape in two tools; nothing clipped; state kept"
-    - "Background the app mid-tool and come back: input is preserved"
-    - "Flashlight strobe/SOS and any timer-based tool stop cleanly when leaving the screen"
-  known_issues: []
-  # Route-seeding (agent feature, on main): the explorer deep-links into each tool instead of
-  # hoping it taps its way across the 30-tool grid. On Android a route is sent to the launch
-  # activity as the `route` string-extra — equivalent to the CI smoke's
-  #   am start -n com.tenzy.toolkit/com.handytools.app.MainActivity -e route <id>
-  # The non-nil route also skips onboarding, and Pro stays unlocked from the initial `-e route
-  # homepro` launch (same process), so Pro tools open too. route_activity defaults to `activity`.
+  known_issues:
+    - "Safety's sample message deliberately contains a fake scam link (paypal.secure-login.top) — it is unreachable by design; do not report link failures for it"
+    - "Tapping 'Open a file' in File Viewer (or any 'Open with'/Share chip) launches the system document picker/share sheet — the app leaving the foreground there is expected, not a crash"
+    - "Settings > permissions, 'Send feedback', 'Rate Tenzy', and any 'Allow' button open another app or system Settings by design — the app leaving the foreground there is not a crash"
+
+  # Route-seeding: the explorer deep-links into each tool instead of hoping it taps across the grid.
+  # On Android a route is sent to the launch activity as the `route` string-extra — equivalent to the
+  # CI smoke's  am start -n com.tenzy.toolkit/com.handytools.app.MainActivity -e route <id>.
+  # The non-nil route also skips onboarding, and Pro stays unlocked from the initial `-e route homepro`
+  # launch (same process), so Pro tools open too. route_activity defaults to `activity`.
   route_extra: route
+  # The real Android nav destinations exactly as HomeScreen's HTool grid opens them (onOpen(t.route)),
+  # plus the folded-in flashlight — NOT the old iOS/catalog ids.
   routes:
-    - fitit
-    - scan
-    - studio
-    - video
-    - formatfix
-    - scrub
-    - cleaner
-    - qrwifi
-    - stitch
-    - shareready
-    - light
-    - contacts
-    - measure
-    - magnify
-    - procam
-    - gpsdash
-    - audiolab
-    - rest
-    - colorvision
-    - sorted
-    - textstudio
-    - translate
-    - voicenotes
-    - livecaptions
-    - shield
-    - lens
-    - memory
-    - datagrab
-    - describe
-    - vault
+    - fileviewer
+    - docs
+    - converter
+    - codes
+    - scrubber
+    - media
+    - cleanup
+    - instruments
+    - safety
+    - share
+    - flashlight
 
 device:
   platform: android
@@ -84,7 +69,7 @@ device:
 
 run:
   max_steps: 400
-  max_minutes: 40
+  max_minutes: 85
   check_links: true
   check_values: true
   check_a11y: true

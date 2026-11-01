@@ -37,6 +37,23 @@ class Pattern:
 # Format Fixer's 2-format/no-preview gaps, Fit It's missing result preview).
 PATTERNS: list[Pattern] = [
     Pattern(
+        id="container-as-listing",
+        title="A readable document is shown as an archive file-listing instead of its content",
+        defect_class="functional", severity="high",
+        probe="In any tool that opens/previews files (File Viewer above all), open each file type: a book "
+              "(EPUB), an Office/OpenDocument file (docx/pptx/xlsx/odt/ods/odp), a PDF, an image, text/CSV/JSON, "
+              "a SQLite db, an APK — and a true archive (zip/7z/rar) for contrast.",
+        tell="Many document formats are really ZIP containers (EPUB, docx, pptx, xlsx, odt…). The tool must "
+             "READ the content — the book's/the document's text, the PDF's pages, the image — NOT list the XML "
+             "parts or files inside the container. A readable document that shows a file-listing (e.g. 'N files "
+             "in this archive', a folder icon) is a defect: only a genuine archive (zip/jar/7z/rar/gz) may show a "
+             "listing. Check the on-screen type label matches the file (e.g. 'EPUB book', 'Word document').",
+        visual="A document (book/office file) showing a list of inner file names or a folder icon, rather than "
+               "its readable text/pages; a wrong type label or a generic folder glyph on a known document type.",
+        learned_from="fileviewer — an opened .epub showed the ZIP archive listing + folder icon instead of the book reader",
+        since="2026-11-01",
+    ),
+    Pattern(
         id="dead-control",
         title="Control looks actionable but does nothing",
         defect_class="functional", severity="high",
