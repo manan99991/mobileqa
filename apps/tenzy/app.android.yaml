@@ -36,6 +36,10 @@ app:
     - "Safety's sample message deliberately contains a fake scam link (paypal.secure-login.top) — it is unreachable by design; do not report link failures for it"
     - "Tapping 'Open a file' in File Viewer (or any 'Open with'/Share chip) launches the system document picker/share sheet — the app leaving the foreground there is expected, not a crash"
     - "Settings > permissions, 'Send feedback', 'Rate Tenzy', and any 'Allow' button open another app or system Settings by design — the app leaving the foreground there is not a crash"
+    - "The CI emulator has NO camera: any live-camera viewfinder (Codes scan, Docs capture, Media passport, Instruments magnifier) renders a black/blank preview. A blank camera preview on the emulator is an environment limitation, NOT a product defect — do not report it."
+    - "A swipe gesture near a screen edge can trigger Android's system back and move the app off-screen; the app briefly leaving the foreground after a swipe is the OS back gesture, not a crash."
+    - "Settings > Appearance theme swatches are a single-select control: tapping the ALREADY-selected theme (Daylight by default) is a no-op by design (like an already-selected tab) — not a dead control. Tapping a different theme re-skins the app."
+    - "Screen-name attribution can lag the agent's navigation: a finding that says one tool's screen shows another tool's content (e.g. 'File Viewer shows a flashlight') is a mislabel — judge the screen by its visible title bar, not a stale screen name."
 
   # Route-seeding: the explorer deep-links into each tool instead of hoping it taps across the grid.
   # On Android a route is sent to the launch activity as the `route` string-extra — equivalent to the
