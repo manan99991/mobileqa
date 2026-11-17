@@ -131,7 +131,10 @@ jobs:
             echo "::warning::no run dir or SB_URL — skipping publish"
           fi
 
-      - name: Upload report artifact
-        if: always()
+      # The real report goes to Supabase (free). Only keep a GitHub copy when a
+      # run FAILS, and only for 2 days, so this never fills the account's free
+      # Actions storage. Success runs upload nothing.
+      - name: Upload report artifact (failures only)
+        if: failure()
         uses: actions/upload-artifact@v4
-        with: { name: gil-qa-report, path: reports/, retention-days: 30 }
+        with: { name: gil-qa-report, path: reports/, retention-days: 2 }
