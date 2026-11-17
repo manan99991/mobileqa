@@ -64,6 +64,9 @@ def write_report(cfg: Config, run_dir: Path, run_id: str, mode: str, result: Run
     (run_dir / "summary.json").write_text(json.dumps({"run_id": run_id, "mode": mode, "blocked": blocked, "summary": summary,
                                                        "replay": replay, "suite": suite_stats, "new_cases": added}, indent=1))
     write_junit(run_dir / "junit.xml", cfg, result, replay_results)
+    # Machine-readable findings for downstream consumers (e.g. the Get It Listed
+    # customer report). Full list with screenshot paths + repro steps.
+    (run_dir / "findings.json").write_text(json.dumps(findings, indent=1), encoding="utf-8")
     return out
 
 

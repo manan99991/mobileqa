@@ -1,0 +1,137 @@
+# Get It Listed — black-box QA run.
+# Give it a customer's APK (a URL) + their app_key; it installs the app on a free
+# Linux emulator, explores it end-to-end with the mobileqa engine, renders the
+# customer report and publishes it to the Get It Listed dashboard (Supabase).
+#
+# Trigger by hand (Actions tab) OR programmatically via repository_dispatch:
+#   POST /repos/manan99991/mobileqa/dispatches
+#     {"event_type":"gil-test","client_payload":{"apk_url":"…","app_key":"…","app_name":"…"}}
+#
+# One-time repo secrets (Settings → Secrets → Actions):
+#   GEMINI_API_KEY    free Google key — the engine's vision brain
+#   SB_URL            https://ljdedtgsijrettyrggpy.supabase.co
+#   SB_SERVICE_KEY    Supabase service-role key (never public)
+
+name: Get It Listed — test an app
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:  { description: "Direct URL to the customer's APK", required: true }
+      app_key:  { description: "Client app_key (matches clients.app_key)", required: true }
+      app_name: { description: "App display name", required: false, default: "Customer app" }
+      steps:    { description: "Exploration budget (actions)", required: false, default: "120" }
+  repository_dispatch:
+    types: [gil-test]
+
+env:
+  MOBILEQA_LLM_BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai/
+  MOBILEQA_LLM_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  MOBILEQA_MODEL: gemini-flash-latest
+  MOBILEQA_VISION_MODEL: gemini-flash-latest
+  SB_URL: ${{ secrets.SB_URL }}
+  SB_SERVICE_KEY: ${{ secrets.SB_SERVICE_KEY }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve inputs
+        id: in
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "apk_url=${{ github.event.client_payload.apk_url }}"   >> $GITHUB_OUTPUT
+            echo "app_key=${{ github.event.client_payload.app_key }}"   >> $GITHUB_OUTPUT
+            echo "app_name=${{ github.event.client_payload.app_name }}" >> $GITHUB_OUTPUT
+            echo "steps=${{ github.event.client_payload.steps || 120 }}" >> $GITHUB_OUTPUT
+          else
+            echo "apk_url=${{ github.event.inputs.apk_url }}"   >> $GITHUB_OUTPUT
+            echo "app_key=${{ github.event.inputs.app_key }}"   >> $GITHUB_OUTPUT
+            echo "app_name=${{ github.event.inputs.app_name }}" >> $GITHUB_OUTPUT
+            echo "steps=${{ github.event.inputs.steps }}"       >> $GITHUB_OUTPUT
+          fi
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          sudo docker system prune -af > /dev/null 2>&1 || true
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: Install mobileqa + Appium + OpenAI client (for Gemini)
+        run: |
+          pip install -e . openai
+          npm install -g appium
+          appium driver install uiautomator2
+
+      - name: Download the customer APK
+        run: |
+          curl -fSL "${{ steps.in.outputs.apk_url }}" -o app.apk
+          ls -la app.apk
+          file app.apk | grep -qiE "archive|android" || echo "::warning::downloaded file may not be an APK"
+
+      - name: Detect package + activity (aapt)
+        id: pkg
+        run: |
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt 2>/dev/null | sort -V | tail -1)
+          PKG=$("$AAPT" dump badging app.apk | awk -F"'" '/package: name=/{print $2}')
+          echo "package=$PKG" >> $GITHUB_OUTPUT
+          echo "detected package: $PKG"
+          [ -n "$PKG" ] || { echo "::error::could not read package from APK"; exit 1; }
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+
+      - name: Boot emulator, explore, publish
+        env:
+          GIL_APK: ./app.apk
+          GIL_PACKAGE: ${{ steps.pkg.outputs.package }}
+          GIL_APP_NAME: ${{ steps.in.outputs.app_name }}
+          GIL_APP_KEY: ${{ steps.in.outputs.app_key }}
+          GIL_PLATFORM: Android
+          GIL_STEPS: ${{ steps.in.outputs.steps }}
+        run: |
+          set +e
+          exec > >(tee mobileqa.log) 2>&1
+          export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          export ANDROID_AVD_HOME="$HOME/.android/avd"; mkdir -p "$ANDROID_AVD_HOME"
+          yes | sdkmanager "system-images;android-30;google_apis;x86_64" >/dev/null 2>&1 && echo "image installed"
+          echo no | avdmanager --verbose create avd --force --name qa \
+            --package "system-images;android-30;google_apis;x86_64" --device pixel_6 2>&1 | tail -4
+          emulator -list-avds | grep -qx qa || { echo "AVD creation FAILED"; exit 1; }
+          nohup emulator -avd qa -no-window -no-audio -no-boot-anim \
+            -gpu swiftshader_indirect -no-snapshot -netdelay none -netspeed full > emulator.log 2>&1 &
+          timeout 180 adb wait-for-device
+          booted=0
+          for i in $(seq 1 60); do
+            [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && { echo "booted after ${i}x5s"; booted=1; break; }
+            sleep 5
+          done
+          [ "$booted" = "1" ] || { echo "EMULATOR DID NOT BOOT"; tail -20 emulator.log; exit 1; }
+          adb shell input keyevent 82 >/dev/null 2>&1 || true
+          echo "== appium =="
+          nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
+          echo "== explore (black-box) =="
+          timeout --signal=TERM 20m python -m mobileqa.cli explore getitlisted/app.blackbox.yaml --steps "$GIL_STEPS"
+          rc=$?
+          echo "== agent exit $rc =="
+          RUN_DIR=$(ls -dt reports/*/ 2>/dev/null | head -1)
+          echo "run dir: $RUN_DIR"
+          if [ -n "$RUN_DIR" ] && [ -n "$SB_URL" ]; then
+            echo "== publish to dashboard =="
+            GIL_RUN_DIR="$RUN_DIR" python getitlisted/push.py || echo "::warning::publish failed"
+          else
+            echo "::warning::no run dir or SB_URL — skipping publish"
+          fi
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: gil-qa-report, path: reports/, retention-days: 30 }

@@ -1,0 +1,44 @@
+# Get It Listed — BLACK-BOX config.
+# Tests ANY customer app from just its APK: no source, no deep-links, no accounts.
+# package + name + apk path are injected by the workflow from the uploaded build.
+app:
+  name: ${GIL_APP_NAME:-Customer app}
+  path: ${GIL_APK:-./app.apk}          # the customer's uploaded APK (installed on the emulator)
+  package: ${GIL_PACKAGE}              # auto-detected from the APK by the workflow (aapt)
+  activity: ""                         # launchable activity auto-detected
+  login: {}                            # unknown app — no credentials
+  base_urls: []
+  allow_destructive: false             # never let it buy / delete on a stranger's app
+  forbidden_texts: ["Purchase", "Subscribe", "Buy", "Upgrade", "Restore purchases", "Continue to payment"]
+  goals:
+    - "Open every screen, tab, menu and modal you can reach; tap every button, icon and list row at least once."
+    - "After each tap, confirm something visibly happens — flag any control that looks tappable but does nothing (dead control)."
+    - "Fill every form with normal data, then with empty, very long, emoji and invalid data; submit and confirm nothing crashes."
+    - "Every result, preview or output that should appear actually appears — flag blank/white result areas."
+    - "Every screen, modal and sub-screen has a visible way back or done (store-review dead-end check)."
+    - "Every external link opens and is not a 404, 5xx or parked domain."
+    - "Text is readable everywhere: no clipped or overlapping text, no tiny tap targets, enough contrast in every theme."
+    - "Icon-only buttons expose an accessible label (Play accessibility + screen-reader check)."
+    - "No placeholder / lorem-ipsum / debug copy, and nothing that would trip Google Play policy."
+    - "Catch any crash, ANR, hang, frozen frame or blank screen anywhere in the app."
+  known_issues: []
+
+device:
+  platform: android
+  name: qa
+  appium_url: ${APPIUM_URL:-http://127.0.0.1:4723}
+  extra_caps:
+    appium:autoGrantPermissions: true     # grant runtime perms so exploration isn't blocked by dialogs
+
+run:
+  max_steps: ${GIL_STEPS:-120}
+  max_minutes: 18
+  check_links: true
+  check_values: true
+  check_a11y: true
+  check_vision: true
+  model: ${MOBILEQA_MODEL:-gemini-flash-latest}
+  vision_model: ${MOBILEQA_VISION_MODEL:-gemini-flash-latest}
+  suite_dir: /tmp/gil_suite          # throwaway: each customer app is a one-off, no stored regression suite
+  report_dir: reports
+  fail_on: [critical, high]
