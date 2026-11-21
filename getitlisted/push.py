@@ -51,7 +51,17 @@ def upload(path: Path, dest: str) -> str:
 
 
 def main():
-    findings = json.loads((RUN_DIR / "findings.json").read_text()) if (RUN_DIR / "findings.json").exists() else []
+    # Honor the trust gate: if the run was inconclusive (bad environment, app never
+    # ran), publish NOTHING — we never show a customer bugs from a broken run.
+    meta = json.loads((RUN_DIR / "run_meta.json").read_text()) if (RUN_DIR / "run_meta.json").exists() else {}
+    if meta.get("status") == "inconclusive":
+        print("run inconclusive — nothing published:", meta.get("reason", ""))
+        return
+
+    src = RUN_DIR / "findings.trusted.json"
+    if not src.exists():
+        src = RUN_DIR / "findings.json"
+    findings = json.loads(src.read_text()) if src.exists() else []
 
     # 1) upload every referenced screenshot, build local-path -> public-url map
     url_map = {}
@@ -65,8 +75,20 @@ def main():
             url_map[sp] = upload(p, f"{APP_KEY}/{RUN_ID}/{p.name}")
     print(f"uploaded {len(url_map)} screenshots")
 
+    # 1b) upload the run evidence: full logs + screen-recording video
+    log_url = ""
+    if (RUN_DIR / "logcat.txt").exists():
+        log_url = upload(RUN_DIR / "logcat.txt", f"{APP_KEY}/{RUN_ID}/logcat.txt")
+    video_urls = []
+    vids = sorted(list((RUN_DIR / "video").glob("*.mp4")) if (RUN_DIR / "video").exists() else [])
+    for v in vids[:4]:
+        video_urls.append(upload(v, f"{APP_KEY}/{RUN_ID}/{v.name}"))
+    print(f"uploaded {len(video_urls)} video segment(s), log: {'yes' if log_url else 'no'}")
+
     # 2) render the customer report with public screenshot URLs, upload it
     data = report.from_run(RUN_DIR, APP_NAME, PLATFORM, url_map)
+    data["log_url"] = log_url
+    data["video_urls"] = video_urls
     html = report.build(data)
     rpt_path = RUN_DIR / "qa_report.html"
     rpt_path.write_text(html, encoding="utf-8")

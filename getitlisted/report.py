@@ -48,20 +48,29 @@ def readiness(findings):
 
 def from_run(run_dir, app_name, platform, url_map=None):
     """Build the report `data` dict from a mobileqa run directory.
+    Prefers findings.trusted.json (post trust-gate); falls back to findings.json.
     url_map: {local_screenshot_path -> public_url} filled by push.py."""
     run_dir = Path(run_dir)
     url_map = url_map or {}
-    findings_raw = json.loads((run_dir / "findings.json").read_text()) if (run_dir / "findings.json").exists() else []
+    src = run_dir / "findings.trusted.json"
+    if not src.exists():
+        src = run_dir / "findings.json"
+    findings_raw = json.loads(src.read_text()) if src.exists() else []
     summary = {}
     sj = run_dir / "summary.json"
     if sj.exists():
         summary = json.loads(sj.read_text()).get("summary", {})
+    device = {}
+    dj = run_dir / "device.json"
+    if dj.exists():
+        device = json.loads(dj.read_text())
 
     findings = []
     for f in findings_raw:
         if f.get("severity") == "info":
             continue
-        shot = (f.get("evidence") or {}).get("screenshot", "")
+        ev = f.get("evidence") or {}
+        shot = ev.get("screenshot", "")
         findings.append({
             "severity": f.get("severity", "low"),
             "category": f.get("category", ""),
@@ -71,6 +80,11 @@ def from_run(run_dir, app_name, platform, url_map=None):
             "repro": f.get("repro", []) or [],
             "screenshot": url_map.get(shot, shot if str(shot).startswith("http") else ""),
             "tip": TIP.get(f.get("category", ""), ""),
+            "reproduction": f.get("reproduction", ""),
+            "reproduction_ratio": f.get("reproduction_ratio", ""),
+            "exception": ev.get("exception", ""),
+            "app_frame": ev.get("app_frame", ""),
+            "obfuscated": ev.get("obfuscated", False),
         })
 
     stats = {
@@ -78,7 +92,7 @@ def from_run(run_dir, app_name, platform, url_map=None):
         "steps": summary.get("steps", 0),
         "duration_s": summary.get("duration_s", 0),
     }
-    return {"app_name": app_name, "platform": platform,
+    return {"app_name": app_name, "platform": platform, "device": device,
             "run_at": datetime.date.today().isoformat(),
             "stats": stats, "findings": findings, "screens": []}
 
@@ -90,6 +104,13 @@ def build(data):
     stats = data.get("stats", {})
     findings = data.get("findings", [])
     screens = data.get("screens", [])
+    device = data.get("device", {})
+    devbits = [device.get("model")]
+    if device.get("api"):
+        devbits.append(f"Android API {device.get('api')}")
+    if device.get("width") and device.get("height"):
+        devbits.append(f"{device.get('width')}×{device.get('height')}")
+    devstr = " · ".join(b for b in devbits if b)
 
     counts = {k: sum(1 for f in findings if f.get("severity") == k) for k in SEV_ORDER}
     score = readiness(findings)
@@ -102,6 +123,8 @@ def build(data):
     def tile(label, value):
         return f'<div class="st"><b>{e(value)}</b><span>{e(label)}</span></div>'
 
+    REP = {"confirmed": ("✓ reproduces", "#49d0a0"), "intermittent": ("~ intermittent", "#f5c26b"),
+           "single-occurrence": ("seen once", "#95a3b3")}
     def card(f):
         name, col, bg, bd = SEV[f.get("severity", "low")]
         shot = f.get("screenshot")
@@ -111,11 +134,25 @@ def build(data):
         if f.get("repro"):
             repro = '<div class="repro"><b>How to see it:</b><ol>' + "".join(
                 f"<li>{e(s)}</li>" for s in f["repro"][:6]) + "</ol></div>"
+        rep = ""
+        if f.get("reproduction") in REP:
+            lab, rc = REP[f["reproduction"]]
+            ratio = f.get("reproduction_ratio", "")
+            rep = f'<span class="repb" style="color:{rc};border-color:{rc}55">{lab}{(" "+e(ratio)) if ratio and f["reproduction"]!="single-occurrence" else ""}</span>'
+        cause = ""
+        if f.get("exception") or f.get("app_frame"):
+            note = ('<div class="obf">Release build is obfuscated — send your <b>mapping.txt / dSYM</b> and we pinpoint the exact line.</div>'
+                    if f.get("obfuscated") else "")
+            cause = (f'<div class="cause"><div class="ck">Root cause</div>'
+                     f'{f"<div><span>Exception</span><code>{e(f.get("exception"))}</code></div>" if f.get("exception") else ""}'
+                     f'{f"<div><span>First app frame</span><code>{e(f.get("app_frame"))}</code></div>" if f.get("app_frame") else ""}'
+                     f'{note}</div>')
         return f'''<div class="fc" style="border-color:{bd}">
           <div class="fc-top"><span class="sev" style="background:{bg};color:{col};border:1px solid {bd}">{name}</span>
-            <span class="where">{e(f.get("screen","—"))}</span></div>
+            {rep}<span class="where">{e(f.get("screen","—"))}</span></div>
           <div class="ft">{e(f.get("title"))}</div>
           <div class="fd">{e(f.get("detail"))}</div>
+          {cause}
           {repro}
           {f'<div class="fix"><b>Suggested fix:</b> {e(f.get("tip"))}</div>' if f.get("tip") else ""}
           {shot_html}</div>'''
@@ -126,6 +163,14 @@ def build(data):
 
     pills = "".join(f'<span class="cpill" style="color:{SEV[k][1]}">{counts[k]} {SEV[k][0].lower()}</span>'
                     for k in SEV_ORDER if counts[k])
+
+    ev_links = []
+    for i, v in enumerate(data.get("video_urls") or []):
+        ev_links.append(f'<a class="evl" href="{e(v)}" target="_blank" rel="noopener">▶ Watch the run{f" (part {i+1})" if len(data.get("video_urls"))>1 else ""}</a>')
+    if data.get("log_url"):
+        ev_links.append(f'<a class="evl" href="{e(data["log_url"])}" target="_blank" rel="noopener">📄 Full device log</a>')
+    evidence_html = (f'<div class="card"><div class="sec-title">Evidence</div><div class="evrow">{"".join(ev_links)}</div>'
+                     f'<div class="method" style="margin-top:10px">Screen recording of the full session and the complete device log — every finding above is traceable to these.</div></div>') if ev_links else ""
 
     return f'''<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
@@ -161,9 +206,18 @@ def build(data):
   .ft{{font-family:var(--disp);font-weight:700;font-size:16px;margin-bottom:5px}}.fd{{color:var(--muted);font-size:14.5px}}
   .repro{{margin-top:10px;font-size:13.5px;color:var(--muted)}}.repro b{{color:var(--text)}}.repro ol{{margin:6px 0 0 18px}}.repro li{{margin-bottom:3px}}
   .fix{{margin-top:10px;font-size:13.5px;color:var(--text);background:rgba(73,208,160,.08);border:1px solid rgba(73,208,160,.22);border-radius:10px;padding:10px 12px}}.fix b{{color:var(--green)}}
+  .repb{{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid;letter-spacing:.2px}}
+  .cause{{margin-top:11px;background:var(--bg);border:1px solid var(--line2);border-radius:11px;padding:12px 13px}}
+  .cause .ck{{font-size:11px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}}
+  .cause>div{{display:flex;gap:10px;align-items:baseline;margin-bottom:6px;flex-wrap:wrap}}
+  .cause span{{font-size:12px;color:var(--muted);min-width:92px}}
+  .cause code{{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:var(--blue-soft);word-break:break-all}}
+  .obf{{font-size:12.5px;color:var(--muted);margin-top:4px}}.obf b{{color:var(--text)}}
   .shot{{display:block;margin-top:12px;max-width:150px}}.shot img{{width:100%;border-radius:10px;border:1px solid var(--line2)}}
   .empty{{color:var(--faint);font-size:14px}}
   .method{{color:var(--muted);font-size:13.5px}}.method b{{color:var(--text)}}
+  .evrow{{display:flex;gap:10px;flex-wrap:wrap}}
+  .evl{{display:inline-block;font-size:13.5px;font-weight:600;padding:9px 14px;border-radius:10px;background:var(--card2);border:1px solid var(--line2);color:var(--text);text-decoration:none}}
   .foot{{text-align:center;color:var(--faint);font-size:12px;margin-top:24px}}.foot a{{color:var(--muted)}}
   @media(max-width:480px){{.appname{{font-size:23px}}}}
 </style></head><body><div class="wrap">
@@ -172,7 +226,7 @@ def build(data):
   <div class="card">
     <div class="eyebrow">Tested app · {e(platform)}</div>
     <div class="appname">{e(app)}</div>
-    <div class="meta">Explored by the Get It Listed engine · {e(ran)}</div>
+    <div class="meta">Explored by the Get It Listed engine · {e(ran)}{f" · {e(devstr)}" if devstr else ""}</div>
     <div class="score-wrap">
       <div class="ring"><div class="inner"><b>{score}</b><span>READY</span></div></div>
       <div class="verdict"><b>{e(verdict)}</b><p>Automated end-to-end exploration on a real Android environment. The score weighs issues by how much they'd hurt a real user.</p>
@@ -183,6 +237,7 @@ def build(data):
       {tile("minutes", mins)}
       {tile("issues found", len(findings))}</div></div>
   <div class="card"><div class="sec-title">Findings{f' · {len(findings)}' if findings else ''}</div>{findings_html}</div>
+  {evidence_html}
   <div class="card"><div class="sec-title">How this was tested</div>
     <div class="method">An automated agent installed your build on a real Android environment and explored it like a person — tapping every control, opening every screen, filling forms with normal and hostile input, and watching for crashes, dead buttons, blank results, broken links, slow screens, accessibility gaps and Google Play policy red-flags. <b>This is deep exploratory testing, not a check of your app's intended business logic</b> — a strong first line of defense, not a replacement for your own acceptance tests.</div></div>
   <div class="foot">Get It Listed · <a href="https://getitlisted.app">getitlisted.app</a> · automated QA engine</div>
