@@ -175,7 +175,7 @@ def parse_ui(xml: str, pkg: str) -> dict:
         root = ET.fromstring(xml)
     except ET.ParseError:
         return {"elements": [], "pkgs": set(), "ok": False}
-    pkgs, elements = set(), []
+    pkgs, elements, texts = set(), [], []
     for idx, n in enumerate(root.iter("node")):
         p = n.get("package") or ""
         pkgs.add(p)
@@ -183,6 +183,9 @@ def parse_ui(xml: str, pkg: str) -> dict:
         if not m:
             continue
         x1, y1, x2, y2 = map(int, m.groups())
+        t = (n.get("text") or "").strip()
+        if t and p == pkg:
+            texts.append((t, y1, y2 - y1))
         if x2 - x1 < 2 or y2 - y1 < 2:
             continue
         cls = n.get("class") or ""
@@ -206,7 +209,23 @@ def parse_ui(xml: str, pkg: str) -> dict:
             "bounds": [x1, y1, x2, y2], "cx": (x1 + x2) // 2, "cy": (y1 + y2) // 2,
             "labeled": _has_label(n), "checkable": n.get("checkable") == "true", "idx": idx,
         })
-    return {"elements": elements, "pkgs": pkgs, "ok": True}
+    return {"elements": elements, "pkgs": pkgs, "ok": True, "texts": texts}
+
+
+NAV_WORDS = re.compile(r"^[‹<←\s]*(back|skip|clear|close|cancel|done|next|ok|menu|more|search|test entry \d+|photo)$", re.I)
+
+
+def screen_title(ui: dict) -> str:
+    """Name a screen by its heading: the biggest text in the top third that isn't a nav word."""
+    texts = ui.get("texts") or []
+    if not texts:
+        return ""
+    top = max(y for _, y, _ in texts) or 1
+    cands = [(t, y, h) for t, y, h in texts if y < 900 and 3 <= len(t) <= 40 and not NAV_WORDS.match(t)]
+    if not cands:
+        return ""
+    cands.sort(key=lambda c: (-c[2], c[1]))
+    return cands[0][0]
 
 
 def el_label(e: dict) -> str:
@@ -316,6 +335,10 @@ class Crawler:
         self.slowest: list[tuple[float, str]] = []
         self.last_el = None
         self.picks = 0
+        self.edges: dict = {}
+        self.remaining: dict = {}
+        self.last_move = None
+        self.hops = 0
         self.cur_activity = ""
         self.cur_shot = ""
 
@@ -329,7 +352,7 @@ class Crawler:
     def _settle(self) -> tuple[dict, float]:
         t0 = self.clock()
         prev, ui = None, None
-        for _ in range(3):
+        for _ in range(2):
             xml = self.adb.dump()
             ui = parse_ui(xml, self.pkg)
             sig = tuple(el_key(e) for e in ui["elements"])
@@ -403,9 +426,9 @@ class Crawler:
     def _record_screen(self, sig: str, activity: str, ui: dict) -> str:
         if sig in self.screens:
             return self.screens[sig]["name"]
-        act = activity.split("/")[-1].split(".")[-1] or "Screen"
-        titles = [e["text"] for e in ui["elements"] if e.get("text")][:2]
-        name = f"{act}" + (f" — {titles[0]}" if titles else "")
+        name = screen_title(ui) or (activity.split("/")[-1].split(".")[-1] or "Screen")
+        if any(sc["name"] == name for sc in self.screens.values()):
+            name = f"{name} ({sum(1 for sc in self.screens.values() if sc['name'].startswith(name)) + 1})"
         shot = self.out / "screens" / f"s{len(self.screens):02d}.png"
         self.adb.screenshot(shot)
         self.screens[sig] = {"name": name, "activity": activity, "shot": str(shot),
@@ -439,14 +462,14 @@ class Crawler:
 
     def _edge_tests(self, sig: str, name: str):
         """Rotation + background/resume on each new screen — classic state-loss crash sources."""
-        if len(self.screens) <= 25:
+        if len(self.screens) <= 10:
             self.adb.rotate(True); self._act("rotate", "Rotate the phone to landscape", landscape=True)
             self.sleep(1.5)
             self._check_failures("rotating to landscape", name)
             self.adb.rotate(False); self._act("rotate", "Rotate back to portrait", landscape=False)
             self.sleep(1.5)
             self._check_failures("rotating back to portrait", name)
-        if len(self.screens) <= 10:
+        if len(self.screens) <= 5:
             self.adb.home(); self._act("home", "Press Home (send the app to the background)")
             self.sleep(1.5)
             self.adb.launch(self.pkg); self._act("launch", "Reopen the app from the launcher")
@@ -512,7 +535,7 @@ class Crawler:
                 continue
             top = self.adb.top_package()
             if top and top != self.pkg:
-                if top in PICKER_PKGS and self.path and self.picks < 40:
+                if top in PICKER_PKGS and self.path and self.picks < 12:
                     self.picks += 1
                     if pick_in_picker(self.adb, ui, self.sleep):
                         self.integrations.append({"from": self.path[-1], "opened": top, "picked": True})
@@ -543,17 +566,34 @@ class Crawler:
             if new:
                 self._edge_tests(sig, name)
                 continue
+            if self.last_move:
+                self.edges[self.last_move] = sig
+                self.last_move = None
             cands = self._candidates(sig, ui)
+            self.remaining[sig] = len(cands)
             if not cands:
+                # route through an already-tried control that leads to a screen with untried controls
+                route = [e for e in ui["elements"] if e["pkg"] == self.pkg and not e["editable"]
+                         and self.remaining.get(self.edges.get((sig, el_key(e))), 0) > 0
+                         and self.edges.get((sig, el_key(e))) != sig]
+                if route and self.hops < 400:
+                    e = route[0]; self.hops += 1
+                    self.adb.tap(e["cx"], e["cy"])
+                    self._act("tap", f'Tap "{el_label(e)}"', el=_sel(e))
+                    self.last_move = (sig, el_key(e))
+                    self.sleep(1.0)
+                    self._check_failures(f'Tap "{el_label(e)}"', name)
+                    continue
                 back_streak += 1
-                if back_streak > 6:
-                    self._relaunch("stuck"); back_streak = 0; continue
+                if back_streak > 2 or len(self.path) > 30:
+                    self._relaunch("explored this branch"); back_streak = 0; continue
                 self.adb.back(); self._act("back", "Press Back"); self.sleep(1.2)
                 self._check_failures("pressing Back", name)
                 continue
             back_streak = 0
             e = cands[0]
             k = el_key(e)
+            self.last_move = (sig, k)
             self.tried[sig][k] = self.tried[sig].get(k, 0) + 1
             if e["editable"]:
                 val = test_value(e)
