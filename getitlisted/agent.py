@@ -587,7 +587,7 @@ class Agent:
         print(f"agent: planned {len(cases)} test cases")
         results = []
         for c in cases:
-            if time.time() - t0 > minutes * 60 or not brain.available():
+            if time.time() - t0 > minutes * 60:   # no key -> device checks only, still run everything
                 results.append({"id": c["id"], "title": c.get("title"), "feature_id": c.get("feature_id"),
                                 "type": c.get("type"), "verdict": "not_run", "expected": c.get("expected")})
                 continue
