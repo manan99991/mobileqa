@@ -194,8 +194,8 @@ jobs:
             exit 0
           fi
           pip install -q pillow >/dev/null 2>&1
-          GIL_RUN_DIR="$RUN_DIR" GIL_VIDEO_DIR=/tmp/vid python getitlisted/push.py >/dev/null 2>push.err
-          rc=$?; [ $rc -eq 0 ] && echo "report published" || { echo "::error::publish failed"; exit 1; }
+          GIL_RUN_DIR="$RUN_DIR" GIL_VIDEO_DIR=/tmp/vid python getitlisted/push.py 2>push.err | grep -E "published|inconclusive|uploaded"
+          rc=${PIPESTATUS[0]}; [ $rc -eq 0 ] && echo "publish step ok" || { echo "::error::publish failed"; exit 1; }
 
       - name: Mark build done
         if: always() && env.BUILD_ID != ''

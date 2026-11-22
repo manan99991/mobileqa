@@ -21,7 +21,7 @@ functional findings to findings.json (crashes found here carry a replay trail so
 usage: agent.py <run_dir>       env: GIL_PACKAGE, GEMINI_API_KEY (or GIL_LLM_*), GIL_AGENT_MINUTES
 """
 from __future__ import annotations
-import json, os, re, subprocess, sys, tempfile, time
+import json, os, re, shlex, subprocess, sys, tempfile, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -295,6 +295,31 @@ class Agent:
             self.sleep(1.0)
         return human
 
+    SHARE_SEED = {"image": ("images", "IMG_20261110_100000.jpg", "image/jpeg"),
+                  "video": ("video", "VID_20261120_101500.mp4", "video/mp4"),
+                  "audio": ("audio", "Voice memo 1.m4a", "audio/mp4"),
+                  "pdf": ("file", "Invoice_1042.pdf", "application/pdf")}
+
+    def share_in(self, kind: str, text: str | None = None) -> tuple[bool, str]:
+        """Share a sample file (or text) into the app the way a person does from Gallery/Files: Android's Share sheet."""
+        self.adb.sh(f"am force-stop {self.pkg}"); self.sleep(1)
+        if kind == "text" or text:
+            out = self.adb.sh(f"am start -W -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "
+                              f"{shlex.quote(text or '')} -p {self.pkg}", timeout=40)
+            return ("Error" not in out, f"Share this text to the app: “{text}”" if "Error" not in out else "The app did not accept shared text")
+        coll, name, mime = self.SHARE_SEED.get(kind, self.SHARE_SEED["image"])
+        base = "content://media/external/file" if coll == "file" else f"content://media/external/{coll}/media"
+        q = self.adb.sh(f"content query --uri {base} --projection _id --where \"_display_name='{name}'\"")
+        m = re.search(r"_id=(\d+)", q or "")
+        if not m:
+            return False, f"No sample {kind} on the phone to share"
+        uri = f"{base}/{m.group(1)}"
+        out = self.adb.sh(f"am start -W -a android.intent.action.SEND -t {mime} --eu android.intent.extra.STREAM {uri} "
+                          f"--grant-read-uri-permission -p {self.pkg}", timeout=40)
+        if "Error" in (out or ""):
+            return False, f"The app is not offered in the Share sheet for a {kind}"
+        return True, f"Share the sample {kind} “{name}” to the app from the phone's Share sheet"
+
     def find_target(self, u: dict, target: str, near: str = "") -> dict | None:
         t = (target or "").strip().lower()
         if not t:
@@ -315,6 +340,12 @@ class Agent:
                 lab = " ".join([e.get("text") or "", e.get("desc") or "", e.get("hint") or "", (e.get("rid") or "").replace("_", " ")]).strip().lower()
                 if lab and test(lab):
                     return e
+        # Compose/Flutter often put the words in a plain text node inside a tappable row: tap the words themselves
+        for test in (lambda l: l == t, lambda l: l.startswith(t)):
+            for tx, y, h, x1, x2 in (u.get("texts") or []):
+                if test((tx or "").strip().lower()):
+                    return {"cx": int((x1 + x2) / 2), "cy": int(y + h / 2), "text": tx, "desc": "", "rid": "", "cls": "text",
+                            "pkg": self.pkg, "bounds": [x1, y, x2, y + h]}
         return None
 
     def ai_pick(self, u: dict, intent: str, shot: str) -> dict | None:
@@ -424,7 +455,7 @@ class Agent:
             if do in ("tap", "type"):
                 near = st.get("near", "")
                 el = self.find_target(u, st.get("target", ""), near)
-                for _ in range(14 if near else (0 if st.get("optional") else 2)):
+                for _ in range(14 if near else (3 if st.get("optional") else 2)):
                     if el:
                         break
                     self.adb.scroll("down"); self.sleep(1); u = self.ui()
@@ -446,6 +477,10 @@ class Agent:
                     human.append(f'Tap “{el_label(el)}”')
                     trail.append({"kind": "tap", "human": human[-1], "el": _sel(el)})
                 self.sleep(1.2)
+            elif do == "share_in" and not self.ios:
+                ok, how = self.share_in(st.get("kind", "image"), st.get("text"))
+                (human.append(how), trail.append({"kind": "share_in", "human": how})) if ok else (blocked.append(how), human.append(f"({how})"))
+                self.sleep(3)
             elif do == "pick" and self.ios:
                 self.sleep(1.5)
                 if self.adb.pick(st.get("kind", "image")):
@@ -606,7 +641,7 @@ class Agent:
             except Exception as ex:
                 r = {"id": c["id"], "title": c.get("title"), "verdict": "error", "actual": str(ex)[:200]}
             results.append(r)
-            print(f"agent: {r['id']} {r['verdict']:<12} " + (c.get('title', '')[:70] if os.environ.get("GIL_VERBOSE") == "1" else ""))
+            print(f"agent: {r['id']} {r['verdict']:<12} " + (c.get('title', '')[:70] + "  ->  " + str(r.get("actual") or "")[:110] if os.environ.get("GIL_VERBOSE") == "1" else ""))
         (self.run / "test_results.json").write_text(json.dumps({"results": results, "features": model.get("features", []),
                                                                 "app_summary": model.get("app_summary", ""),
                                                                 "usage": brain.usage()}, indent=1))

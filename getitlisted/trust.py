@@ -98,6 +98,11 @@ def main():
     # Sanity gate: if the app never reached the foreground, we did not really test it —
     # mark inconclusive so NOTHING gets published as a bug from a bad environment.
     foregrounded = device.get("foregrounded", True)
+    try:   # the crawler actually saw the app's own screens -> it ran, whatever is on screen at the very end
+        if json.loads((run / "summary.json").read_text())["summary"].get("screens", 0) > 0:
+            foregrounded = True
+    except Exception:
+        pass
     if not foregrounded:
         (run / "run_meta.json").write_text(json.dumps(
             {"status": "inconclusive", "reason": "app never reached foreground (environment, not a bug)",

@@ -144,6 +144,22 @@
    "expected_result": "Summarises long text into three sentences",
    "output_kind": "text",
    "risk": "high"
+  },
+  {
+   "id": "F17",
+   "name": "Photo under 2 MB",
+   "purpose": "Shrink a photo to under 2 MB",
+   "entry_screen": "launch",
+   "expected_result": "Saved photo under 2 MB",
+   "risk": "high"
+  },
+  {
+   "id": "F18",
+   "name": "Video small enough for chat (16 MB)",
+   "purpose": "Shrink a video for chat apps",
+   "entry_screen": "launch",
+   "expected_result": "Saved video under 16 MB",
+   "risk": "high"
   }
  ],
  "screens_studied": 0,
