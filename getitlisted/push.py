@@ -59,52 +59,114 @@ def main():
     if not src.exists():
         src = RUN_DIR / "findings.json"
     findings = json.loads(src.read_text()) if src.exists() else []
+    summary = json.loads((RUN_DIR / "summary.json").read_text()).get("summary", {}) if (RUN_DIR / "summary.json").exists() else {}
+    base = f"{APP_KEY}/{RUN_ID}"
 
-    # 1) upload every referenced screenshot, build local-path -> public-url map
+    # 1) evidence screenshots: box the exact control(s) in red, shrink for the web, upload
     url_map = {}
-    shots = {(f.get("evidence") or {}).get("screenshot") for f in findings}
-    shots.discard(None); shots.discard("")
-    for sp in shots:
-        p = Path(sp)
-        if not p.is_absolute():
-            p = RUN_DIR / sp
-        if p.exists():
-            url_map[sp] = upload(p, f"{APP_KEY}/{RUN_ID}/{p.name}")
-    print(f"uploaded {len(url_map)} screenshots")
+    for n, f in enumerate(findings):
+        ev = f.get("evidence") or {}
+        for key in ("screenshot", "after_screenshot"):
+            sp = ev.get(key)
+            p = report._resolve(RUN_DIR, sp)
+            if not p:
+                continue
+            out = web_image(p, RUN_DIR / f"ev_{n}_{key}.jpg", ev.get("elements") if key == "screenshot" else None)
+            url_map[f"{n}:{key}"] = upload(out, f"{base}/{out.name}")
+    print(f"uploaded {len(url_map)} evidence screenshots")
 
-    # 1b) upload the run evidence: full logs + screen-recording video
-    log_url = ""
-    if (RUN_DIR / "logcat.txt").exists():
-        log_url = upload(RUN_DIR / "logcat.txt", f"{APP_KEY}/{RUN_ID}/logcat.txt")
-    video_urls = []
-    vdir = Path(os.environ.get("GIL_VIDEO_DIR") or RUN_DIR / "video")
-    vids = sorted(vdir.glob("*.mp4")) if vdir.exists() else []
-    for v in vids[:4]:
-        video_urls.append(upload(v, f"{APP_KEY}/{RUN_ID}/{v.name}"))
-    print(f"uploaded {len(video_urls)} video segment(s), log: {'yes' if log_url else 'no'}")
-
-    # 2) render the customer report with public screenshot URLs, upload it
     data = report.from_run(RUN_DIR, APP_NAME, PLATFORM, url_map)
-    data["log_url"] = log_url
-    data["video_urls"] = video_urls
+
+    # 2) every screen the engine reached (gallery)
+    for k, sc in enumerate((summary.get("screen_list") or [])[:40]):
+        p = report._resolve(RUN_DIR, sc.get("shot"))
+        if p:
+            out = web_image(p, RUN_DIR / f"screen_{k:02d}.jpg", None, width=360)
+            data["screens"].append({"name": sc.get("name", ""), "url": upload(out, f"{base}/{out.name}")})
+
+    # 3) app icon
+    for ic in ("app_icon.png", "app_icon.webp"):
+        if (RUN_DIR / ic).exists():
+            data["icon_url"] = upload(RUN_DIR / ic, f"{base}/{ic}")
+            break
+
+    # 4) session video + a "jump to this moment" link per finding
+    vdir = Path(os.environ.get("GIL_VIDEO_DIR") or RUN_DIR / "video")
+    segs = []
+    if (vdir / "index.txt").exists():
+        for line in (vdir / "index.txt").read_text().splitlines():
+            parts = line.split()
+            if len(parts) == 2 and (vdir / parts[0]).exists() and (vdir / parts[0]).stat().st_size > 10_000:
+                segs.append((parts[0], float(parts[1])))
+    seg_url = {}
+    for name, _ in segs[:8]:
+        seg_url[name] = upload(vdir / name, f"{base}/{name}")
+    data["video_urls"] = [seg_url[nm] for nm, _ in segs if nm in seg_url]
+    for f in data["findings"]:
+        t = f.get("t")
+        if not t:
+            continue
+        cands = [(nm, st) for nm, st in segs if st <= t and nm in seg_url]
+        if cands:
+            nm, st = cands[-1]
+            f["video_at"] = f"{seg_url[nm]}#t={max(0, int(t - st) - 3)}"
+    print(f"uploaded {len(seg_url)} video segment(s)")
+
+    # 5) full device log
+    if (RUN_DIR / "logcat.txt").exists():
+        data["log_url"] = upload(RUN_DIR / "logcat.txt", f"{base}/logcat.txt")
+
+    # 6) render + upload the report, then register it on the dashboard
     html = report.build(data)
     rpt_path = RUN_DIR / "qa_report.html"
     rpt_path.write_text(html, encoding="utf-8")
-    upload(rpt_path, f"{APP_KEY}/{RUN_ID}/qa_report.html")
+    upload(rpt_path, f"{base}/qa_report.html")
     # Supabase serves .html as plain text, so customers open it through our viewer page
-    report_url = f"https://getitlisted.app/report/?r={APP_KEY}/{RUN_ID}"
-
-    # 3) counts + score, then insert the reports row
-    sev = [f.get("severity") for f in findings]
+    report_url = f"https://getitlisted.app/report/?r={base}"
+    sev = [f["severity"] for f in data["findings"]]
     row = {
         "app_key": APP_KEY, "platform": PLATFORM, "run_id": RUN_ID,
-        "score": report.readiness([f for f in data["findings"]]),
+        "score": report.readiness(data["findings"]),
         "critical": sev.count("critical"), "high": sev.count("high"),
         "medium": sev.count("medium"), "low": sev.count("low"),
         "issues": len(data["findings"]), "report_url": report_url, "status": "ready",
     }
     call("report", row=row)
-    print(f"published report for {APP_KEY}: score {row['score']}, {row['issues']} issues -> {report_url}")
+    print(f"published report: score {row['score']}, {row['issues']} issues")
+
+
+def web_image(src: Path, dst: Path, elements=None, width=720) -> Path:
+    """Draw numbered red boxes around the given controls, resize for the web, save as JPEG."""
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return src
+    try:
+        im = Image.open(src).convert("RGB")
+        if elements:
+            d = ImageDraw.Draw(im)
+            lw = max(4, im.width // 180)
+            for k, el in enumerate(elements, 1):
+                b = el.get("bounds")
+                if not b:
+                    continue
+                x1, y1, x2, y2 = b
+                pad = lw * 2
+                d.rounded_rectangle([x1 - pad, y1 - pad, x2 + pad, y2 + pad], radius=lw * 3, outline=(229, 51, 111), width=lw)
+                r = lw * 5
+                cx, cy = max(r, x1 - pad), max(r, y1 - pad)
+                d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(229, 51, 111))
+                try:
+                    d.text((cx, cy), str(k), fill="white", anchor="mm", font_size=int(r * 1.3))
+                except TypeError:
+                    d.text((cx - r // 3, cy - r // 2), str(k), fill="white")
+        if im.width > width:
+            im = im.resize((width, int(im.height * width / im.width)))
+        im.save(dst, "JPEG", quality=82)
+        return dst
+    except Exception as ex:
+        print(f"  ! image prep failed: {ex}", file=sys.stderr)
+        return src
 
 
 if __name__ == "__main__":

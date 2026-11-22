@@ -308,9 +308,13 @@ class Crawler:
         self.a11y_flagged: set[str] = set()
         self.perf: dict = {}
         self.slowest: list[tuple[float, str]] = []
+        self.last_el = None
+        self.cur_activity = ""
+        self.cur_shot = ""
 
     # ── helpers
     def _act(self, kind: str, human: str, **kw):
+        self.last_el = kw.get("el") if kind in ("tap", "type") else None
         self.history.append({"kind": kind, "human": human, **kw})
         self.path.append(human)
         self.steps += 1
@@ -360,7 +364,10 @@ class Crawler:
                 "detail": f"The app closed unexpectedly right after this step"
                           + (f" ({exc[-1].split('.')[-1]})." if exc else "."),
                 "screen_name": screen_name, "repro": ["Install the app fresh and open it"] + self.path[-15:],
-                "evidence": {"screenshot": str(shot), "log": exc[-1] if exc else ""},
+                "evidence": {"screenshot": self.cur_shot or str(shot), "after_screenshot": str(shot),
+                             "log": exc[-1] if exc else "", "t": time.time(),
+                             "activity": self.cur_activity,
+                             "elements": [_loc(self.last_el)] if self.last_el else []},
                 "replay": list(self.history),
             })
             hit = True
@@ -371,7 +378,10 @@ class Crawler:
                 "title": f"App froze (not responding) after: {after}",
                 "detail": "Android showed an 'app isn't responding' error — the main thread was blocked for 5+ seconds.",
                 "screen_name": screen_name, "repro": ["Install the app fresh and open it"] + self.path[-15:],
-                "evidence": {"log": "ANR"}, "replay": list(self.history),
+                "evidence": {"log": "ANR", "t": time.time(), "activity": self.cur_activity,
+                             "screenshot": str(self._shot_now(f"anr_{len(self.findings)}")),
+                             "elements": [_loc(self.last_el)] if self.last_el else []},
+                "replay": list(self.history),
             })
             hit = True
         return hit
@@ -392,7 +402,7 @@ class Crawler:
         shot = self.out / "screens" / f"s{len(self.screens):02d}.png"
         self.adb.screenshot(shot)
         self.screens[sig] = {"name": name, "activity": activity, "shot": str(shot),
-                             "controls": len(ui["elements"])}
+                             "controls": len(ui["elements"]), "t": time.time()}
         # accessibility — one grouped finding per screen, objective rules only
         iss = a11y_issues([e for e in ui["elements"] if e["pkg"] == self.pkg], self.density)
         if iss["unlabeled"] and sig not in self.a11y_flagged:
@@ -403,7 +413,8 @@ class Crawler:
                 "detail": f"Tappable controls with no text or content description ({ids}). TalkBack users hear only 'button', "
                           "and Google Play's pre-launch accessibility check flags this.",
                 "screen_name": name, "repro": ["Open the app", f"Go to {name}", "Turn on TalkBack and swipe through the controls"],
-                "evidence": {"screenshot": str(shot)},
+                "evidence": {"screenshot": str(shot), "t": time.time(), "activity": activity,
+                             "elements": [_loc(e) for e in iss["unlabeled"][:12]]},
             })
         if iss["small"] and sig not in self.a11y_flagged:
             ex = iss["small"][0]
@@ -412,8 +423,9 @@ class Crawler:
                 "title": f"{len(iss['small'])} tap target(s) smaller than 48 dp",
                 "detail": f"e.g. '{el_label(ex[0])}' is {ex[1]}x{ex[2]} dp. Android guidelines ask for at least 48x48 dp "
                           "so controls are easy to hit.",
-                "screen_name": name, "repro": ["Open the app", f"Go to {name}"],
-                "evidence": {"screenshot": str(shot)},
+                "screen_name": name, "repro": ["Open the app", f"Go to {name}", f"Look at '{el_label(ex[0])}' (boxed in the screenshot)"],
+                "evidence": {"screenshot": str(shot), "t": time.time(), "activity": activity,
+                             "elements": [dict(_loc(e), size_dp=f"{w}x{h} dp") for e, w, h in iss["small"][:12]]},
             })
         self.a11y_flagged.add(sig)
         return name
@@ -455,8 +467,14 @@ class Crawler:
         return [e for _, e in out]
 
     # ── main loop
+    def _shot_now(self, name: str) -> Path:
+        p = self.out / "screens" / f"{name}.png"
+        self.adb.screenshot(p)
+        return p
+
     def run(self) -> dict:
         t_start = self.clock()
+        self.started_at = time.time()
         self.density = self.adb.density()
         comp = self.adb.launcher_component(self.pkg)
         self.adb.clear_data(self.pkg)
@@ -501,9 +519,11 @@ class Crawler:
                     self._relaunch("app left foreground")
                 continue
             activity = self.adb.top_activity()
+            self.cur_activity = activity
             sig = screen_sig(activity, [e for e in ui["elements"] if e["pkg"] == self.pkg])
             new = sig not in self.screens
             name = self._record_screen(sig, activity, ui)
+            self.cur_shot = self.screens[sig]["shot"]
             self.slowest.append((round(settle, 1), name))
             if new:
                 self._edge_tests(sig, name)
@@ -583,7 +603,7 @@ class Crawler:
                     "repro": ["Install the app fresh",
                               f"Run: adb shell monkey -p {self.pkg} -s {seed} --throttle 120 --pct-syskeys 0 --pct-appswitch 0 {n}",
                               "The same seed replays the exact same input sequence"],
-                    "evidence": {"screenshot": str(shot), "log": ""},
+                    "evidence": {"screenshot": str(shot), "log": "", "t": time.time()},
                     "replay": [{"kind": "monkey", "seed": seed, "events": n}],
                 })
         self.perf["stress"] = runs
@@ -595,15 +615,23 @@ class Crawler:
             "screens": len(self.screens), "steps": self.steps, "duration_s": duration,
             "performance": self.perf, "integrations": self.integrations[:40],
             "slowest_screens": sorted(self.slowest, reverse=True)[:5],
-            "screen_list": [{"name": s["name"], "activity": s["activity"], "controls": s["controls"]}
-                            for s in self.screens.values()],
+            "screen_list": [{"name": s["name"], "activity": s["activity"], "controls": s["controls"],
+                             "shot": s["shot"], "t": s.get("t")} for s in self.screens.values()],
+            "started_at": self.started_at, "density": self.density,
             "pids": sorted(self.pids),
         }
         return summary
 
 
+def _loc(e: dict | None) -> dict:
+    """Where a control is: its label, id and on-screen box (device pixels)."""
+    if not e:
+        return {}
+    return {"label": el_label(e), "rid": e.get("rid") or "", "cls": e.get("cls") or "", "bounds": e.get("bounds")}
+
+
 def _sel(e: dict) -> dict:
-    return {k: e.get(k) for k in ("rid", "text", "desc", "cls", "cx", "cy", "editable", "password")}
+    return {k: e.get(k) for k in ("rid", "text", "desc", "cls", "cx", "cy", "editable", "password", "bounds")}
 
 
 def find_el(ui: dict, sel: dict, pkg: str) -> dict | None:
