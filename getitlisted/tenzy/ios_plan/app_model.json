@@ -1,0 +1,227 @@
+{
+ "app_summary": "Tenzy for iPhone: ready-made tools that turn photos, videos, PDFs, sound and text into finished results, each ending on a result screen that checks its own promise.",
+ "features": [
+  {
+   "id": "F1",
+   "name": "Hide, strip and shrink a photo to share",
+   "purpose": "Hide, strip and shrink a photo to share",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (keep-share)",
+   "output_kind": "image",
+   "risk": "high",
+   "route": "share-shield"
+  },
+  {
+   "id": "F2",
+   "name": "Watermark a copy of my ID",
+   "purpose": "Watermark a copy of my ID",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (idcopy-result)",
+   "output_kind": "image",
+   "risk": "high",
+   "route": "id-copy-watermarked"
+  },
+  {
+   "id": "F3",
+   "name": "Shrink a photo to under 2 MB",
+   "purpose": "Shrink a photo to under 2 MB",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (keep-share)",
+   "output_kind": "image",
+   "risk": "high",
+   "route": "photo-under-2mb"
+  },
+  {
+   "id": "F4",
+   "name": "Turn a photo into a searchable PDF",
+   "purpose": "Turn a photo into a searchable PDF",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (pdf-search-check)",
+   "output_kind": "pdf",
+   "risk": "high",
+   "route": "photo-to-pdf"
+  },
+  {
+   "id": "F5",
+   "name": "Turn text or a link into a QR code",
+   "purpose": "Turn text or a link into a QR code",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (code-tested)",
+   "output_kind": "image",
+   "risk": "high",
+   "route": "text-to-qr"
+  },
+  {
+   "id": "F6",
+   "name": "WhatsApp a number without saving it",
+   "purpose": "WhatsApp a number without saving it",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (code-tested)",
+   "output_kind": "text",
+   "risk": "high",
+   "route": "whatsapp-no-save"
+  },
+  {
+   "id": "F7",
+   "name": "Check if a message is a scam",
+   "purpose": "Check if a message is a scam",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (scam-verdict)",
+   "output_kind": "text",
+   "risk": "high",
+   "route": "scam-check"
+  },
+  {
+   "id": "F8",
+   "name": "Strip the tracking from a link",
+   "purpose": "Strip the tracking from a link",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (link-finish)",
+   "output_kind": "text",
+   "risk": "high",
+   "route": "clean-link"
+  },
+  {
+   "id": "F9",
+   "name": "Pull out links, emails and phone numbers",
+   "purpose": "Pull out links, emails and phone numbers",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (text-finish)",
+   "output_kind": "text",
+   "risk": "high",
+   "route": "links-and-numbers"
+  },
+  {
+   "id": "F10",
+   "name": "Sum up long text in 3 sentences",
+   "purpose": "Sum up long text in 3 sentences",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (text-finish)",
+   "output_kind": "text",
+   "risk": "high",
+   "route": "short-summary"
+  },
+  {
+   "id": "F11",
+   "name": "Shrink a video for chat (under 16 MB)",
+   "purpose": "Shrink a video for chat (under 16 MB)",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (video-size-check)",
+   "output_kind": "video",
+   "risk": "high",
+   "route": "video-chat"
+  },
+  {
+   "id": "F12",
+   "name": "Shrink a video under 25 MB and email it",
+   "purpose": "Shrink a video under 25 MB and email it",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (video-size-check)",
+   "output_kind": "video",
+   "risk": "high",
+   "route": "video-email"
+  },
+  {
+   "id": "F13",
+   "name": "Remove the sound from a video",
+   "purpose": "Remove the sound from a video",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (video-finish)",
+   "output_kind": "video",
+   "risk": "high",
+   "route": "video-quiet"
+  },
+  {
+   "id": "F14",
+   "name": "Grab a still from a video",
+   "purpose": "Grab a still from a video",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (still-finish)",
+   "output_kind": "image",
+   "risk": "high",
+   "route": "video-still"
+  },
+  {
+   "id": "F15",
+   "name": "Turn a video into a GIF",
+   "purpose": "Turn a video into a GIF",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (gif-finish)",
+   "output_kind": "gif",
+   "risk": "high",
+   "route": "video-gif"
+  },
+  {
+   "id": "F16",
+   "name": "Speed a video up",
+   "purpose": "Speed a video up",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (video-speed-check)",
+   "output_kind": "video",
+   "risk": "high",
+   "route": "video-fast"
+  },
+  {
+   "id": "F17",
+   "name": "Slow a video down",
+   "purpose": "Slow a video down",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (video-speed-check)",
+   "output_kind": "video",
+   "risk": "high",
+   "route": "video-slowmo"
+  },
+  {
+   "id": "F18",
+   "name": "Keep just the first page of a PDF",
+   "purpose": "Keep just the first page of a PDF",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (pdf-size-check)",
+   "output_kind": "pdf",
+   "risk": "high",
+   "route": "pdf-first-page"
+  },
+  {
+   "id": "F19",
+   "name": "Shrink a PDF under 5 MB and email it",
+   "purpose": "Shrink a PDF under 5 MB and email it",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (pdf-size-check)",
+   "output_kind": "pdf",
+   "risk": "high",
+   "route": "pdf-email"
+  },
+  {
+   "id": "F20",
+   "name": "Turn text into an audio file",
+   "purpose": "Turn text into an audio file",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (listen-finish)",
+   "output_kind": "audio",
+   "risk": "high",
+   "route": "listen-later"
+  },
+  {
+   "id": "F21",
+   "name": "Make a recording sound like a chipmunk",
+   "purpose": "Make a recording sound like a chipmunk",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (voice-finish)",
+   "output_kind": "audio",
+   "risk": "high",
+   "route": "voice-chipmunk"
+  },
+  {
+   "id": "F22",
+   "name": "Turn a photo into a pencil sketch",
+   "purpose": "Turn a photo into a pencil sketch",
+   "entry_screen": "launch",
+   "expected_result": "Finishes on its result screen (keep-share)",
+   "output_kind": "image",
+   "risk": "high",
+   "route": "photo-sketch"
+  }
+ ],
+ "screens_studied": 0,
+ "written_by": "Claude, from Tenzy's iOS source (BuilderView, the *Finish views, PromiseTests)"
+}

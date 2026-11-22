@@ -253,7 +253,11 @@ final class GILCrawler: XCTestCase {
             case "back": resp["did"] = goBack(snapshotEls() ?? [])
             case "home": XCUIDevice.shared.press(.home)
             case "launch": if app.state == .runningForeground { } else { app.activate() }
-            case "relaunch": app.terminate(); app.launch()
+            case "relaunch":
+                app.terminate()
+                if let args = cmd["args"] as? [String] { app.launchArguments = args }
+                else { app.launchArguments = (env["GIL_ARGS"] ?? "").split(separator: " ").map(String.init) }
+                app.launch()
             case "terminate": app.terminate()
             case "rotate": XCUIDevice.shared.orientation = (cmd["landscape"] as? Bool ?? false) ? .landscapeLeft : .portrait
             case "swipe":

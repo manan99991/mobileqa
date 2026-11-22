@@ -65,7 +65,8 @@ class IOSDevice:
             self._cmd("back")
     def home(self): self._cmd("home")
     def launch(self, pkg=None): self._cmd("launch")
-    def restart(self, pkg=None): self._cmd("relaunch", timeout=120)
+    def restart(self, pkg=None, args=None):
+        self._cmd("relaunch", timeout=120, **({"args": args} if args else {}))
     def rotate(self, landscape: bool): self._cmd("rotate", landscape=landscape)
     def scroll(self, direction="down"): self._cmd("swipe", dir="up" if direction == "down" else "down")
     def state(self) -> int: return int(self._cmd("state").get("state") or 0)
@@ -180,6 +181,12 @@ class IOSProbe:
                         errs.append(line[:240])
         facts["app_errors"] = errs[-6:]
         return facts
+
+    def read_bytes(self, path: str) -> bytes:
+        try:
+            return Path(path).read_bytes()
+        except Exception:
+            return b""
 
     def exif_has_gps(self, path: str):
         try:

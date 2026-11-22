@@ -1,0 +1,937 @@
+[
+ {
+  "id": "TC01",
+  "feature_id": "F1",
+  "title": "Hide, strip and shrink a photo to share on the sample image",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-share-shield",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "keep-share",
+    "seconds": 60
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "keep-share"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "exif_gps_removed",
+    "arg": ""
+   },
+   {
+    "oracle": "output_under_mb",
+    "arg": "2"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC02",
+  "feature_id": "F2",
+  "title": "Watermark a copy of my ID on the sample image",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-id-copy-watermarked",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "idcopy-result",
+    "seconds": 60
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "idcopy-result"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "exif_gps_removed",
+    "arg": ""
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC03",
+  "feature_id": "F3",
+  "title": "Shrink a photo to under 2 MB on the sample image",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-photo-under-2mb",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "keep-share",
+    "seconds": 60
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "keep-share"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "output_under_mb",
+    "arg": "2"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC04",
+  "feature_id": "F4",
+  "title": "Turn a photo into a searchable PDF on the sample pdf",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-photo-to-pdf",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "pdf-search-check",
+    "seconds": 90
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "pdf-search-check"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "pdf"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC05",
+  "feature_id": "F5",
+  "title": "Turn text or a link into a QR code on the sample image",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-text-to-qr",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "code-tested",
+    "seconds": 40
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "code-tested"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "code-tested",
+    "contains": "Tested"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC06",
+  "feature_id": "F6",
+  "title": "WhatsApp a number without saving it on the sample text",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-whatsapp-no-save",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "code-tested",
+    "seconds": 40
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "code-tested"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "code-tested",
+    "contains": "Tested"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC07",
+  "feature_id": "F7",
+  "title": "Check if a message is a scam on the sample text",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-scam-check",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "scam-verdict",
+    "seconds": 40
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "scam-verdict"
+   },
+   {
+    "oracle": "text_on_screen",
+    "arg": "What to do"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC08",
+  "feature_id": "F8",
+  "title": "Strip the tracking from a link on the sample text",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-clean-link",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "link-finish",
+    "seconds": 40
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "link-finish"
+   },
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "utm_"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC09",
+  "feature_id": "F9",
+  "title": "Pull out links, emails and phone numbers on the sample text",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-links-and-numbers",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "text-finish",
+    "seconds": 40
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "text-finish"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC10",
+  "feature_id": "F10",
+  "title": "Sum up long text in 3 sentences on the sample text",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-short-summary",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "text-finish",
+    "seconds": 60
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "text-finish"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC11",
+  "feature_id": "F11",
+  "title": "Shrink a video for chat (under 16 MB) on the sample video",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-video-chat",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "video-size-check",
+    "seconds": 150
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "video-size-check"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "video-size-check",
+    "contains": "Under"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "video"
+   },
+   {
+    "oracle": "output_under_mb",
+    "arg": "16"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC12",
+  "feature_id": "F12",
+  "title": "Shrink a video under 25 MB and email it on the sample video",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-video-email",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "video-size-check",
+    "seconds": 150
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "video-size-check"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "video-size-check",
+    "contains": "Under"
+   },
+   {
+    "oracle": "output_under_mb",
+    "arg": "25"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC13",
+  "feature_id": "F13",
+  "title": "Remove the sound from a video on the sample video",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-video-quiet",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "video-finish",
+    "seconds": 150
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "video-finish"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "video"
+   },
+   {
+    "oracle": "video_silent",
+    "arg": ""
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC14",
+  "feature_id": "F14",
+  "title": "Grab a still from a video on the sample image",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-video-still",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "still-finish",
+    "seconds": 90
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "still-finish"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC15",
+  "feature_id": "F15",
+  "title": "Turn a video into a GIF on the sample gif",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-video-gif",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "gif-finish",
+    "seconds": 150
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "gif-finish"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "gif"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC16",
+  "feature_id": "F16",
+  "title": "Speed a video up on the sample video",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-video-fast",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "video-speed-check",
+    "seconds": 150
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "video-speed-check"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "video-speed-check",
+    "contains": "faster"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "video"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC17",
+  "feature_id": "F17",
+  "title": "Slow a video down on the sample video",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-video-slowmo",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "video-speed-check",
+    "seconds": 150
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "video-speed-check"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "video-speed-check",
+    "contains": "slower"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "video"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC18",
+  "feature_id": "F18",
+  "title": "Keep just the first page of a PDF on the sample pdf",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-pdf-first-page",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "pdf-size-check",
+    "seconds": 90
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "pdf-size-check"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "pdf"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC19",
+  "feature_id": "F19",
+  "title": "Shrink a PDF under 5 MB and email it on the sample pdf",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-pdf-email",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "pdf-size-check",
+    "seconds": 90
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "pdf-size-check"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "pdf"
+   },
+   {
+    "oracle": "output_under_mb",
+    "arg": "5"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC20",
+  "feature_id": "F20",
+  "title": "Turn text into an audio file on the sample audio",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-listen-later",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "listen-finish",
+    "seconds": 90
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "listen-finish"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "audio"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC21",
+  "feature_id": "F21",
+  "title": "Make a recording sound like a chipmunk on the sample audio",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-voice-chipmunk",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "voice-finish",
+    "seconds": 90
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "voice-finish"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "audio"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC22",
+  "feature_id": "F22",
+  "title": "Turn a photo into a pencil sketch on the sample image",
+  "type": "happy",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-photo-sketch",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "wait_for",
+    "target": "keep-share",
+    "seconds": 60
+   }
+  ],
+  "expected": "The tool finishes on its result screen and the output passes every check.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "keep-share"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC23",
+  "feature_id": "F1",
+  "title": "Rotate while the share shield runs",
+  "type": "state",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-share-shield",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "rotate"
+   },
+   {
+    "do": "wait_for",
+    "target": "keep-share",
+    "seconds": 60
+   }
+  ],
+  "expected": "Rotation mid-task still finishes with a clean photo.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "keep-share"
+   },
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "exif_gps_removed",
+    "arg": ""
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "TC24",
+  "feature_id": "F11",
+  "title": "Background the app while a video shrinks",
+  "type": "state",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-video-chat",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "background"
+   },
+   {
+    "do": "wait_for",
+    "target": "video-size-check",
+    "seconds": 150
+   }
+  ],
+  "expected": "Leaving and returning mid-task still finishes the video.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "video-size-check"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "video-size-check",
+    "contains": "Under"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "TC25",
+  "feature_id": "F13",
+  "title": "Rotate while the sound is removed",
+  "type": "state",
+  "entry_screen": "launch",
+  "launch_args": [
+   "-route",
+   "run-video-quiet",
+   "-uitest",
+   "-sample"
+  ],
+  "steps": [
+   {
+    "do": "rotate"
+   },
+   {
+    "do": "wait_for",
+    "target": "video-finish",
+    "seconds": 150
+   }
+  ],
+  "expected": "Rotation mid-task still produces a silent video.",
+  "checks": [
+   {
+    "oracle": "element_present",
+    "arg": "video-finish"
+   },
+   {
+    "oracle": "video_silent",
+    "arg": ""
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "medium"
+ }
+]

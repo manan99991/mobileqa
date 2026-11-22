@@ -34,7 +34,7 @@ SYS = ("You are a senior mobile QA engineer. You test apps the way a careful hum
        "Reply with JSON only.")
 
 ORACLES = ["new_file", "output_smaller_than_input", "exif_gps_removed", "share_sheet_opened", "other_app_opened",
-           "calendar_event_added", "contacts_changed", "alarm_set", "notification_posted", "text_on_screen", "text_not_on_screen",
+           "calendar_event_added", "contacts_changed", "alarm_set", "notification_posted", "text_on_screen", "text_not_on_screen", "video_silent", "output_under_mb", "element_present",
            "no_app_error_logged", "screen_changed"]
 
 
@@ -108,6 +108,16 @@ class Probe:
                 "contacts": self._count("content://com.android.contacts/raw_contacts"),
                 "alarms": self.adb.sh(f"dumpsys alarm | grep -c '{self.pkg}'").strip(),
                 "notifs": self.adb.sh(f"dumpsys notification --noredact | grep -c 'pkg={self.pkg}'").strip()}
+
+    def read_bytes(self, path: str) -> bytes:
+        try:
+            if path.startswith("app:"):
+                return self.adb.exec_out(f"run-as {self.pkg} cat {path[4:]}", timeout=90)
+            loc = Path(tempfile.mkdtemp()) / "f"
+            subprocess.run(["adb", "pull", path, str(loc)], capture_output=True, timeout=90)
+            return loc.read_bytes()
+        except Exception:
+            return b""
 
     def exif_has_gps(self, path: str) -> bool | None:
         try:
@@ -183,6 +193,21 @@ def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_te
             return "na", ""
         blob = " ".join(final_texts).lower()
         return ("pass", f"Screen shows “{arg}”") if arg.lower() in blob else ("fail", f"Screen does not show “{arg}”")
+    if oracle in ("video_silent", "output_under_mb"):
+        exts = ("mp4", "mov", "m4v") if oracle == "video_silent" else None
+        outs = [f for f in files if (not exts or f["ext"] in exts) and f.get("bytes")]
+        if not outs:
+            return "na", "No output file to inspect."
+        o = outs[-1]
+        if oracle == "output_under_mb":
+            lim = float(arg or 0)
+            mb = o["bytes"] / 1e6
+            return ("pass" if mb <= lim else "fail", f"{Path(o['path']).name} is {mb:.2f} MB (limit {lim:g} MB)")
+        data = probe.read_bytes(o["path"])
+        if not data:
+            return "na", "Could not read the video file."
+        has_sound = re.search(rb"hdlr.{8}soun", data, re.S) is not None
+        return ("fail", f"{Path(o['path']).name} still has a sound track") if has_sound else ("pass", f"{Path(o['path']).name} has no sound track")
     if oracle == "text_not_on_screen":
         if not arg:
             return "na", ""
@@ -377,13 +402,20 @@ class Agent:
         res = {"id": c["id"], "title": c.get("title"), "feature_id": c.get("feature_id"), "type": c.get("type"),
                "expected": c.get("expected"), "entry_screen": c.get("entry_screen"), "steps_done": [], "checks": []}
         screen = self.by_name.get(c["entry_screen"]) or {"name": "Home", "reach": []}
-        human = self.go_to(screen)
+        pre = None
+        if c.get("launch_args") and self.ios:
+            pre = self.probe.snap()          # the tool may start working as soon as it opens
+            self.adb.restart(self.pkg, c["launch_args"]); self.sleep(3)
+            human = [f"Open the tool directly (launch arguments: {' '.join(c['launch_args'])})"]
+        else:
+            human = self.go_to(screen)
         u0 = self.ui()
         before_shot = self.shot(f"{c['id']}_before")
-        before = self.probe.snap()
+        before = pre or self.probe.snap()
         c0 = self.adb.crash_count(self.pkg)
         trail = [{"kind": "launch", "human": "Open the app"}] + list(screen.get("reach") or [])
         blocked = []
+        self.timeouts = []
         for st in c.get("steps", [])[:14]:
             do = (st.get("do") or "").lower()
             u = self.ui()
@@ -428,6 +460,15 @@ class Agent:
                     trail.append({"kind": "pick", "human": human[-1]})
                 else:
                     blocked.append("No file picker opened"); human.append("(no picker opened)")
+            elif do == "wait_for":
+                want, end, seen = st.get("target", ""), time.time() + min(180, float(st.get("seconds") or 60)), False
+                while time.time() < end:
+                    if f'resource-id="{want}"' in self.adb.dump():
+                        seen = True; break
+                    self.sleep(2)
+                human.append(f"Wait for the result ({want})" + ("" if seen else " \u2014 never appeared"))
+                if not seen:
+                    self.timeouts.append(want)
             elif do == "back":
                 self.adb.back(); human.append("Press Back"); trail.append({"kind": "back", "human": "Press Back"}); self.sleep(1)
             elif do == "wait":
@@ -456,8 +497,19 @@ class Agent:
         facts = self.probe.diff(before)
         crashed = self.adb.crash_count(self.pkg) > c0
         final_texts = [t for t, *_ in (u1.get("texts") or [])]
+        self.last_xml = self.adb.dump()
         changed = [el_key(e) for e in u0["elements"]] != [el_key(e) for e in u1["elements"]]
         for ck in c.get("checks") or []:
+            if ck.get("oracle") == "element_present":
+                ok = f'resource-id="{ck.get("arg")}"' in self.last_xml
+                lab = ck.get("contains")
+                if ok and lab:
+                    m = re.search(r'resource-id="' + re.escape(ck["arg"]) + r'"[^>]*', self.last_xml)
+                    ok = bool(m and lab.lower() in m.group(0).lower())
+                res["checks"].append({"oracle": "element_present", "arg": ck.get("arg"), "status": "pass" if ok else "fail",
+                                      "evidence": (f"Finish screen shows \u201c{ck.get('arg')}\u201d" + (f" containing \u201c{lab}\u201d" if lab else ""))
+                                      if ok else (f"\u201c{ck.get('arg')}\u201d" + (f" with \u201c{lab}\u201d" if lab else "") + " never appeared")})
+                continue
             stt, ev = check(ck.get("oracle", ""), ck.get("arg", ""), facts, self.probe, self.seed, final_texts, changed)
             if stt != "na":
                 res["checks"].append({"oracle": ck.get("oracle"), "arg": ck.get("arg", ""), "status": stt, "evidence": ev})
@@ -599,6 +651,9 @@ if __name__ == "__main__":
         from ios_device import IOSDevice
         dev = IOSDevice(os.environ["GIL_CMD_DIR"], os.environ["BUNDLE"], os.environ["UDID"], os.environ["EXE"],
                         str(run / "applog_ios.txt"))
+        if not dev._cmd("state", timeout=300).get("state"):        # wait for the remote control to start
+            print("agent: the iOS remote control never started"); sys.exit(1)
+        print("agent: iOS remote control ready")
         try:
             Agent(run, os.environ["BUNDLE"], adb=dev).run_all(float(os.environ.get("GIL_AGENT_MINUTES") or 45))
         finally:
