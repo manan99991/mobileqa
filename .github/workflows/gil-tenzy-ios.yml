@@ -34,8 +34,8 @@ jobs:
           ls /Applications | grep -i xcode
           sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
           xcodebuild -version
-          brew install xcodegen >/dev/null 2>&1 || true
-          python3 -m pip install --break-system-packages -q pillow >/dev/null 2>&1 || python3 -m pip install -q pillow >/dev/null 2>&1 || true
+          brew install xcodegen >/dev/null 2>&1
+          python3 -m pip install --break-system-packages -q pillow >/dev/null 2>&1 || python3 -m pip install -q pillow >/dev/null 2>&1
 
       - name: Build Tenzy for the simulator (Debug = Pro unlocked)
         working-directory: tenzy/ios
@@ -45,7 +45,7 @@ jobs:
           xcodebuild build -project HandyTools.xcodeproj -scheme HandyTools -configuration Debug \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/tdd" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO -skipPackagePluginValidation -skipMacroValidation \
-            2>&1 | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+            2>&1 | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)"
           grep -q "BUILD SUCCEEDED" build.log || { grep -E "error:" build.log | head -30; exit 1; }
           APP=$(find "$RUNNER_TEMP/tdd" -path "*Debug-iphonesimulator/*.app" -maxdepth 5 -name "HandyTools.app" | head -1)
           [ -n "$APP" ] || { tail -60 build.log; exit 1; }
@@ -60,7 +60,7 @@ jobs:
           xcodegen generate >/dev/null
           xcodebuild build-for-testing -project GILRunner.xcodeproj -scheme GILRunner \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/gdd" 2>&1 | tee runner.log \
-            | grep -E "error:|TEST BUILD (SUCCEEDED|FAILED)|BUILD (SUCCEEDED|FAILED)" || true
+            | grep -E "error:|TEST BUILD (SUCCEEDED|FAILED)|BUILD (SUCCEEDED|FAILED)"
           XCR=$(find "$RUNNER_TEMP/gdd" -name "*.xctestrun" | head -1)
           [ -n "$XCR" ] || { grep -B2 -A6 "error:" runner.log | head -80; exit 1; }
           echo "XCR=$XCR" >> $GITHUB_ENV
@@ -75,14 +75,15 @@ jobs:
           echo "UDID=$UDID" >> $GITHUB_ENV
           for t in 1 2 3; do xcrun simctl install "$UDID" "$APP" && break; sleep 20; done
           for p in all camera microphone photos location speech-recognition; do xcrun simctl privacy "$UDID" grant $p "$BUNDLE" 2>/dev/null || true; done
-          xcrun simctl privacy "$UDID" grant all "$BUNDLE" || true
+          xcrun simctl privacy "$UDID" grant all "$BUNDLE"
           mkdir -p "$RUNNER_TEMP/media"
-          python3 -c "import sys;sys.path.insert(0,'getitlisted');import seed_device as s;from pathlib import Path;[s.jpeg_with_gps(Path('$RUNNER_TEMP/media/IMG_%d.jpg'%i),i) for i in range(6)]" || true
-          ls "$RUNNER_TEMP"/media/*.jpg >/dev/null 2>&1 && xcrun simctl addmedia "$UDID" "$RUNNER_TEMP"/media/*.jpg || true
+          python3 -c "import sys;sys.path.insert(0,'getitlisted');import seed_device as s;from pathlib import Path;[s.jpeg_with_gps(Path('$RUNNER_TEMP/media/IMG_%d.jpg'%i),i) for i in range(6)]"
+          ls "$RUNNER_TEMP"/media/*.jpg >/dev/null 2>&1 && xcrun simctl addmedia "$UDID" "$RUNNER_TEMP"/media/*.jpg
           echo "simulator: $(xcrun simctl list devices -j | python3 -c "import json,sys;print([d['name'] for v in json.load(sys.stdin)['devices'].values() for d in v if d['udid']=='$UDID'])") on $RT"
 
       - name: Test the app
         run: |
+          set +e
           RUN_DIR="$PWD/reports/gil-ios-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$RUN_DIR" /tmp/vid
           echo "RUN_DIR=$RUN_DIR" >> $GITHUB_ENV
           SINCE=$(date +%s); echo "SINCE=$SINCE" >> $GITHUB_ENV
@@ -113,6 +114,7 @@ jobs:
 
       - name: Functional tests (learn -> plan -> run -> verify -> confirm)
         run: |
+          set +e
           mkdir -p "$RUNNER_TEMP/cmd"
           TEST_RUNNER_GIL_BUNDLE="$BUNDLE" TEST_RUNNER_GIL_OUT="$RUN_DIR" TEST_RUNNER_GIL_CMD_DIR="$RUNNER_TEMP/cmd" TEST_RUNNER_GIL_ARGS="$GIL_ARGS" \
             xcodebuild test-without-building -xctestrun "$XCR" -destination "id=$UDID" \
@@ -127,7 +129,7 @@ jobs:
             perl -e 'alarm shift; exec @ARGV' $(( (GIL_AGENT_MINUTES + 15) * 60 )) python3 getitlisted/agent.py "$RUN_DIR"
           echo "agent exit $?"
           kill $SPID 2>/dev/null; kill $VPID 2>/dev/null; kill -INT "$(cat /tmp/vid/current.pid 2>/dev/null)" 2>/dev/null; kill $LPID 2>/dev/null; sleep 6
-          grep -E "error:|Test Case" serve.log | head -5 || true
+          grep -E "error:|Test Case" serve.log | head -5
 
       - name: Replay crashes, trust gate, publish
         run: |
