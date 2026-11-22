@@ -39,6 +39,12 @@ from pathlib import Path
 
 PERMISSION_PKGS = ("com.android.permissioncontroller", "com.google.android.permissioncontroller",
                    "com.android.packageinstaller", "com.google.android.packageinstaller")
+PICKER_PKGS = ("com.android.documentsui", "com.google.android.documentsui", "com.google.android.providers.media.module",
+               "com.android.providers.media.module", "com.android.contacts", "com.google.android.contacts",
+               "com.google.android.apps.photos", "com.android.gallery3d")
+PICK_ITEM_RE = re.compile(r"(item_root|thumbnail|icon_thumb|grid_item|photo|media_item|contact_tile|cliv_name|name|title)", re.I)
+PICK_ROOT_RE = re.compile(r"^(images|photos|downloads?|pictures|camera|videos|audio|documents|recent)$", re.I)
+PICK_OK_RE = re.compile(r"^(select|done|open|add|ok|allow|choose|attach)$", re.I)
 ALLOW_RE = re.compile(r"^(allow|while using the app|only this time|allow all the time|ok)$", re.I)
 ANR_WAIT_RE = re.compile(r"^(wait)$", re.I)
 FORBIDDEN_RE = re.compile(
@@ -309,6 +315,7 @@ class Crawler:
         self.perf: dict = {}
         self.slowest: list[tuple[float, str]] = []
         self.last_el = None
+        self.picks = 0
         self.cur_activity = ""
         self.cur_shot = ""
 
@@ -505,6 +512,14 @@ class Crawler:
                 continue
             top = self.adb.top_package()
             if top and top != self.pkg:
+                if top in PICKER_PKGS and self.path and self.picks < 40:
+                    self.picks += 1
+                    if pick_in_picker(self.adb, ui, self.sleep):
+                        self.integrations.append({"from": self.path[-1], "opened": top, "picked": True})
+                        self._act("pick", f"Pick a sample file in the system picker ({top.split('.')[-2]})")
+                        self.sleep(1.5)
+                        self._check_failures("picking a file", "System picker")
+                        continue
                 if top in PERMISSION_PKGS or top == "android":
                     self.adb.back(); self.sleep(1); continue
                 launcher = "launcher" in top or "nexuslauncher" in top
@@ -648,6 +663,33 @@ def find_el(ui: dict, sel: dict, pkg: str) -> dict | None:
     return None
 
 
+def pick_in_picker(adb, ui: dict, sleep) -> bool:
+    """In a system file/photo/contact picker: open a sensible folder if needed, pick the first
+    item, then confirm (multi-select pickers). Same logic in crawl and replay, so picks are reproducible."""
+    picked = False
+    for _ in range(5):
+        if adb.top_package() not in PICKER_PKGS:
+            return True                      # picker closed: the app got the file
+        els = ui["elements"]
+        ok = [e for e in els if PICK_OK_RE.match((e.get("text") or "").strip())]
+        items = [e for e in els if PICK_ITEM_RE.search(e.get("rid") or "") and not e["editable"]
+                 and (e["bounds"][3] - e["bounds"][1]) > 60]
+        roots = [e for e in els if PICK_ROOT_RE.match((e.get("text") or "").strip())]
+        if picked and ok:
+            tgt = ok[0]
+        elif items and not picked:
+            tgt = sorted(items, key=lambda e: (e["cy"], e["cx"]))[0]; picked = True
+        elif roots and not picked:
+            tgt = roots[0]
+        elif ok:
+            tgt = ok[0]
+        else:
+            return False
+        adb.tap(tgt["cx"], tgt["cy"]); sleep(1.5)
+        ui = parse_ui(adb.dump(), "")
+    return adb.top_package() not in PICKER_PKGS
+
+
 # ───────────────────────────── replay (reproduce) ─────────────────────────────
 def minimal_trail(trail: list[dict]) -> list[dict]:
     """Drop rotate-and-back and home-and-reopen pairs, keeping the last two steps intact
@@ -676,6 +718,7 @@ def replay_once(adb: Adb, pkg: str, trail: list[dict], sleep=time.sleep) -> bool
         elif k == "back": adb.back(); sleep(1.2)
         elif k == "home": adb.home(); sleep(1.5)
         elif k == "rotate": adb.rotate(st.get("landscape", False)); sleep(1.5)
+        elif k == "pick": pick_in_picker(adb, parse_ui(adb.dump(), pkg), sleep)
         elif k in ("tap", "type"):
             ui = parse_ui(adb.dump(), pkg)
             for e in ui["elements"]:  # same auto-answers as the crawl

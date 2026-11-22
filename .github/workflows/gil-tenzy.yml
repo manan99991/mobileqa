@@ -1,0 +1,24 @@
+# Test our own app, Tenzy, with the Get It Listed engine.
+# Builds the latest code from manan99991/putt-party-play (branch handytools) with Pro unlocked
+# so every tool is reachable — built inside the test job, never uploaded — then runs the full
+# engine and publishes the report to the dashboard (tenzy-android).
+name: Get It Listed — Tenzy
+
+on:
+  push:
+    branches: [getitlisted-engine]
+    paths: ["getitlisted/tenzy/android.txt"]
+  workflow_dispatch:
+
+jobs:
+  android:
+    permissions: { contents: read, id-token: write }
+    uses: ./.github/workflows/getitlisted.yml
+    with:
+      source_repo: manan99991/putt-party-play
+      source_ref: handytools
+      source_build: "cd android && gradle --no-daemon assembleDebug -PinternalUnlock=true --warning-mode none -q"
+      source_apk: "android/app/build/outputs/apk/debug/*.apk"
+      app_key: tenzy-android
+      app_name: Tenzy
+      minutes: "35"

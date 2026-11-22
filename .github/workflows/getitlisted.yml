@@ -11,7 +11,16 @@ name: Get It Listed — test an app
 on:
   workflow_call:
     inputs:
-      build_id: { type: string, required: true }
+      build_id: { type: string, required: false, default: "" }
+      # internal runs (our own apps): build the APK from a public repo inside this job (nothing uploaded)
+      source_repo:  { type: string, required: false, default: "" }
+      source_ref:   { type: string, required: false, default: "" }
+      source_build: { type: string, required: false, default: "" }
+      source_apk:   { type: string, required: false, default: "" }
+      app_key:  { type: string, required: false, default: "" }
+      app_name: { type: string, required: false, default: "" }
+      minutes:  { type: string, required: false, default: "" }
+      seed:     { type: boolean, required: false, default: true }
   workflow_dispatch:
     inputs:
       build_id: { description: "builds.id to test", required: true }
@@ -30,7 +39,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
         with: { repository: manan99991/mobileqa, ref: getitlisted-engine }
@@ -38,9 +47,31 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
 
+      - name: Get internal source
+        if: inputs.source_repo != ''
+        uses: actions/checkout@v4
+        with: { repository: "${{ inputs.source_repo }}", ref: "${{ inputs.source_ref }}", path: internal-src }
+      - if: inputs.source_repo != ''
+        uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - if: inputs.source_repo != ''
+        uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: "8.11.1" }
+      - name: Build internal app
+        if: inputs.source_repo != ''
+        working-directory: internal-src
+        run: |
+          ${{ inputs.source_build }} > ../internal-build.log 2>&1 || { tail -40 ../internal-build.log; exit 1; }
+          mkdir -p ../internal && cp ${{ inputs.source_apk }} ../internal/
+          echo "built: $(ls ../internal)"
+
       - name: Load build (masked)
         run: |
-          if [ -n "$BUILD_ID" ]; then
+          if [ -n "${{ inputs.source_repo }}" ]; then
+            cp "$(ls internal/*.apk | head -1)" app.apk
+            { echo "GIL_APP_KEY=${{ inputs.app_key }}"; echo "GIL_APP_NAME=${{ inputs.app_name }}"
+              echo "GIL_MINUTES=${{ inputs.minutes || '30' }}"; echo "GIL_SMOKE=0"; echo "GIL_INTERNAL=1"; } >> $GITHUB_ENV
+          elif [ -n "$BUILD_ID" ]; then
             cd getitlisted && python queue.py fetch "$BUILD_ID" && cd ..
             echo "GIL_SMOKE=0" >> $GITHUB_ENV
           else
@@ -50,6 +81,7 @@ jobs:
           fi
 
       - name: Download the app
+        if: env.GIL_INTERNAL != '1'
         run: |
           curl -fsSL "$GIL_APK_URL" -o app.apk || { echo "::error::could not download the build"; exit 1; }
           [ -n "$GIL_MAPPING_URL" ] && curl -fsSL "$GIL_MAPPING_URL" -o mapping.txt || true
@@ -98,6 +130,11 @@ jobs:
           adb shell input keyevent 82 >/dev/null 2>&1 || true
           adb install -r -g app.apk >/dev/null 2>&1 || { echo "::error::the APK would not install"; exit 1; }
           echo "app installed"
+          if [ "${{ inputs.seed != false }}" = "true" ]; then
+            (command -v ffmpeg >/dev/null || sudo apt-get install -y -qq ffmpeg >/dev/null 2>&1)
+            pip install -q pillow >/dev/null 2>&1
+            timeout 6m python getitlisted/seed_device.py || echo "seeding incomplete"
+          fi
 
           mkdir -p /tmp/vid
           # rolling 170 s segments; index.txt records each segment's start time so findings can link to the exact moment
@@ -105,7 +142,7 @@ jobs:
               adb shell screenrecord --time-limit 170 --bit-rate 2000000 /sdcard/seg_$n.mp4 2>/dev/null; n=$((n+1)); done ) &
           REC_PID=$!
 
-          timeout --signal=TERM 30m python getitlisted/crawler.py explore
+          timeout --signal=TERM $((GIL_MINUTES + 25))m python getitlisted/crawler.py explore
           echo "crawler exit $?"
           kill $REC_PID 2>/dev/null; adb shell pkill -INT screenrecord 2>/dev/null; sleep 4
           for f in $(adb shell ls /sdcard/ 2>/dev/null | tr -d '\r' | grep '^seg_.*mp4$'); do adb pull /sdcard/$f /tmp/vid/ >/dev/null 2>&1; done
@@ -145,5 +182,5 @@ jobs:
           rc=$?; [ $rc -eq 0 ] && echo "report published" || { echo "::error::publish failed"; exit 1; }
 
       - name: Mark build done
-        if: always() && env.GIL_SMOKE == '0'
+        if: always() && env.GIL_SMOKE == '0' && env.GIL_INTERNAL != '1'
         run: cd getitlisted && python queue.py finish "$BUILD_ID" ${{ job.status == 'success' && 'ok' || 'failed' }}
