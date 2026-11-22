@@ -139,6 +139,9 @@ def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_te
     kinds = {"image": ("jpg", "jpeg", "png", "webp", "heic", "gif"), "gif": ("gif",), "video": ("mp4", "mov", "3gp", "webm"),
              "audio": ("m4a", "mp3", "wav", "aac", "ogg"), "pdf": ("pdf",), "document": ("pdf", "txt", "csv", "docx", "xlsx", "vcf", "zip")}
     if oracle == "new_file":
+        junk = re.compile(r"(\.lck|-journal|-wal|-shm|\.db|\.tmp|\.xml)$|/shared_prefs/|/no_backup/|/code_cache/", re.I)
+        files = [f for f in files if not junk.search(f["path"] if isinstance(f, dict) else str(f))]
+        facts = dict(facts, new_private_files=[x for x in (facts.get("new_private_files") or []) if not junk.search(str(x))])
         want = kinds.get((arg or "").lower())
         hit = [f for f in files if not want or f["ext"] in want] + ([] if want else facts.get("new_private_files") or [])
         priv = [p for p in (facts.get("new_private_files") or []) if not want or p.rsplit(".", 1)[-1].lower() in want]
@@ -501,9 +504,16 @@ class Agent:
             elif do == "pick":
                 self.sleep(1.5)
                 if self.adb.top_package() in PICKER_PKGS:
-                    pick_in_picker(self.adb, parse_ui(self.adb.dump(), ""), self.sleep, st.get("kind"))
-                    human.append(f'Pick a sample {st.get("kind", "file")} in the picker')
-                    trail.append({"kind": "pick", "human": human[-1]})
+                    ok = pick_in_picker(self.adb, parse_ui(self.adb.dump(), ""), self.sleep, st.get("kind"))
+                    self.sleep(2)
+                    if ok and self.adb.top_package() == self.pkg:
+                        human.append(f'Pick a sample {st.get("kind", "file")} in the picker')
+                        trail.append({"kind": "pick", "human": human[-1]})
+                    else:
+                        blocked.append(f'Could not pick a sample {st.get("kind", "file")} in the system picker')
+                        human.append("(picker: no sample could be picked)")
+                        if self.adb.top_package() != self.pkg:
+                            self.adb.back(); self.sleep(1)
                 else:
                     blocked.append("No file picker opened"); human.append("(no picker opened)")
             elif do == "wait_for":

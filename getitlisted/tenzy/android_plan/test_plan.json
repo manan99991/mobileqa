@@ -16,6 +16,14 @@
     "near": "Privacy share shield"
    },
    {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "pick",
+    "kind": "image"
+   },
+   {
     "do": "wait",
     "seconds": 10
    }
@@ -50,6 +58,14 @@
     "do": "tap",
     "target": "Run",
     "near": "Privacy share shield"
+   },
+   {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "pick",
+    "kind": "image"
    },
    {
     "do": "rotate"
@@ -88,6 +104,14 @@
     "near": "ID copy with a safety watermark"
    },
    {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "pick",
+    "kind": "image"
+   },
+   {
     "do": "wait",
     "seconds": 10
    }
@@ -124,6 +148,14 @@
     "near": "Photo to PDF"
    },
    {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "pick",
+    "kind": "image"
+   },
+   {
     "do": "wait",
     "seconds": 12
    }
@@ -155,6 +187,14 @@
     "do": "tap",
     "target": "Run",
     "near": "Photo under 2 MB"
+   },
+   {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "pick",
+    "kind": "image"
    },
    {
     "do": "wait",
@@ -192,6 +232,14 @@
     "do": "tap",
     "target": "Run",
     "near": "Photo to a pencil sketch"
+   },
+   {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "pick",
+    "kind": "image"
    },
    {
     "do": "wait",
@@ -366,6 +414,14 @@
     "near": "Video without its sound"
    },
    {
+    "do": "tap",
+    "target": "Choose a video"
+   },
+   {
+    "do": "pick",
+    "kind": "video"
+   },
+   {
     "do": "wait",
     "seconds": 40
    }
@@ -402,6 +458,14 @@
     "near": "Grab a still from a video"
    },
    {
+    "do": "tap",
+    "target": "Choose a video"
+   },
+   {
+    "do": "pick",
+    "kind": "video"
+   },
+   {
     "do": "wait",
     "seconds": 25
    }
@@ -433,6 +497,14 @@
     "do": "tap",
     "target": "Run",
     "near": "Video under 25 MB for email"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a video"
+   },
+   {
+    "do": "pick",
+    "kind": "video"
    },
    {
     "do": "wait",
@@ -472,6 +544,14 @@
     "near": "Video small enough for chat (16 MB)"
    },
    {
+    "do": "tap",
+    "target": "Choose a video"
+   },
+   {
+    "do": "pick",
+    "kind": "video"
+   },
+   {
     "do": "background"
    },
    {
@@ -507,6 +587,14 @@
     "do": "tap",
     "target": "Run",
     "near": "Video to a GIF"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a video"
+   },
+   {
+    "do": "pick",
+    "kind": "video"
    },
    {
     "do": "wait",
@@ -579,6 +667,14 @@
     "near": "Just the first page of a PDF"
    },
    {
+    "do": "tap",
+    "target": "Choose a PDF"
+   },
+   {
+    "do": "pick",
+    "kind": "pdf"
+   },
+   {
     "do": "wait",
     "seconds": 12
    }
@@ -610,6 +706,14 @@
     "do": "tap",
     "target": "Run",
     "near": "PDF under 5 MB for email"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a PDF"
+   },
+   {
+    "do": "pick",
+    "kind": "pdf"
    },
    {
     "do": "wait",
@@ -647,6 +751,14 @@
     "do": "tap",
     "target": "Run",
     "near": "Chipmunk voice"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a recording"
+   },
+   {
+    "do": "pick",
+    "kind": "audio"
    },
    {
     "do": "wait",
