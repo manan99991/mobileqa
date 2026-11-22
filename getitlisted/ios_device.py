@@ -154,7 +154,7 @@ class IOSProbe:
                 except Exception:
                     continue
                 if st.st_mtime >= since and not f.startswith(".") and not f.endswith((".plist", ".db", ".sqlite", "-wal", "-shm", ".log")):
-                    out.append({"path": str(p), "bytes": st.st_size, "ext": f.rsplit(".", 1)[-1].lower() if "." in f else ""})
+                    out.append({"path": str(p), "bytes": st.st_size, "mtime": st.st_mtime, "ext": f.rsplit(".", 1)[-1].lower() if "." in f else ""})
         return out[:40]
 
     def diff(self, before: dict) -> dict:

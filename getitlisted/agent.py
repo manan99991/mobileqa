@@ -133,9 +133,28 @@ class Probe:
             return None
 
 
+INPUT_NAME = re.compile(r"(^|/)(sample[-_ ]|input[-_ ]|original[-_ ])|/Inbox/|/tmp/.*upload", re.I)
+
+
+def split_io(files: list, seed: dict) -> tuple[list, list]:
+    """New files are either copies of what went IN (the app's sample, our seeded file) or what came OUT."""
+    seeded = {x.get("name") for x in (seed or {}).get("files", [])}
+    ins, outs = [], []
+    for f in files:
+        p = f["path"] if isinstance(f, dict) else str(f)
+        (ins if (INPUT_NAME.search(p) or Path(p).name in seeded) else outs).append(f)
+    outs.sort(key=lambda f: f.get("mtime", 0) if isinstance(f, dict) else 0)
+    return ins, outs
+
+
+def has_sound(data: bytes) -> bool:
+    return re.search(rb"hdlr.{8}soun", data, re.S) is not None
+
+
 def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_texts: list, screen_changed: bool):
     """Deterministic verdict for one expected outcome: (status, evidence) with status pass|fail|na."""
-    files = facts.get("new_files") or []
+    ins, files = split_io(facts.get("new_files") or [], seed)
+    facts = dict(facts, new_private_files=[x for x in (facts.get("new_private_files") or []) if not INPUT_NAME.search(str(x))])
     kinds = {"image": ("jpg", "jpeg", "png", "webp", "heic", "gif"), "gif": ("gif",), "video": ("mp4", "mov", "3gp", "webm"),
              "audio": ("m4a", "mp3", "wav", "aac", "ogg"), "pdf": ("pdf",), "document": ("pdf", "txt", "csv", "docx", "xlsx", "vcf", "zip")}
     if oracle == "new_file":
@@ -160,9 +179,12 @@ def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_te
         return ("pass" if o["bytes"] < biggest_in else "fail",
                 f"Output {Path(o['path']).name} is {o['bytes'] / 1e6:.2f} MB vs input up to {biggest_in / 1e6:.2f} MB")
     if oracle == "exif_gps_removed":
-        imgs = [f for f in files if f["ext"] in ("jpg", "jpeg")]
+        imgs = [f for f in files if f["ext"] in ("jpg", "jpeg", "heic")]
         if not imgs:
             return "na", "No new photo to inspect."
+        src = [f for f in ins if f["ext"] in ("jpg", "jpeg", "heic")]
+        if src and probe.exif_has_gps(src[-1]["path"]) is False:
+            return "na", "The input photo had no location in it, so this can't prove the location was removed."
         g = probe.exif_has_gps(imgs[-1]["path"])
         if g is None:
             return "na", "Could not read the photo's metadata."
@@ -209,8 +231,13 @@ def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_te
         data = probe.read_bytes(o["path"])
         if not data:
             return "na", "Could not read the video file."
-        has_sound = re.search(rb"hdlr.{8}soun", data, re.S) is not None
-        return ("fail", f"{Path(o['path']).name} still has a sound track") if has_sound else ("pass", f"{Path(o['path']).name} has no sound track")
+        src = [f for f in ins if f["ext"] in exts]
+        if src:
+            sd = probe.read_bytes(src[-1]["path"])
+            if sd and not has_sound(sd):
+                return "na", "The input video had no sound to begin with, so this can't prove the sound was removed."
+        return ("fail", f"{Path(o['path']).name} still has a sound track") if has_sound(data) else \
+               ("pass", f"{Path(o['path']).name} has no sound track" + (" (the input had one)" if src else ""))
     if oracle == "text_not_on_screen":
         if not arg:
             return "na", ""

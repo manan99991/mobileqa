@@ -507,10 +507,13 @@ def build(data):
                 "blocked": ("Couldn\u2019t run", "#5E5A80"), "inconclusive": ("Inconclusive", "#8A86A8"),
                 "not_run": ("Not run (time)", "#8A86A8"), "error": ("Test error", "#8A86A8")}
         fname = {x.get("id"): x.get("name") for x in feats}
+        TICK, CROSS = "\u2713", "\u2717"
         chart = donut([(VCOL[k][0], cnt[k], VCOL[k][1]) for k in ("pass", "fail", "review", "blocked", "inconclusive", "not_run") if cnt[k]], "tests")
         rows2 = "".join(
             f'<tr><td>{e(r.get("id"))}</td><td>{e(fname.get(r.get("feature_id"), ""))}</td><td>{e(r.get("title"))}'
             + (f'<div class="sub">{e(r.get("actual"))}</div>' if r.get("verdict") in ("fail", "review", "blocked") and r.get("actual") else "")
+            + "".join(f'<div class="sub">{TICK if x.get("status") == "pass" else CROSS} {e(x.get("evidence"))}</div>'
+                      for x in (r.get("checks") or []) if x.get("evidence") and x.get("status") in ("pass", "fail"))
             + f'</td><td>{e((r.get("type") or "").title())}</td>'
             f'<td><span class="sev" style="color:{VCOL.get(r.get("verdict"), VCOL["inconclusive"])[1]};background:#F7F5FF">{VCOL.get(r.get("verdict"), VCOL["inconclusive"])[0]}</span></td></tr>'
             for r in res)

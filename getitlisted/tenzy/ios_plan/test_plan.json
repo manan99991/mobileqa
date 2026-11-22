@@ -14,7 +14,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -23,7 +23,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -66,7 +66,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -75,7 +75,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -114,7 +114,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -123,7 +123,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -162,7 +162,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -171,7 +171,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -206,7 +206,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -215,7 +215,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -255,7 +255,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -264,7 +264,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -275,12 +275,17 @@
     "why_pass": "No stop or error message from the tool"
    },
    {
-    "oracle": "element_present",
-    "arg": "code-tested",
-    "contains": "Tested"
+    "oracle": "no_app_error_logged"
    },
    {
-    "oracle": "no_app_error_logged"
+    "oracle": "element_present",
+    "arg": "chat-finish",
+    "why_pass": "The WhatsApp link screen appeared"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "chat-open",
+    "why_pass": "There is a button to open the chat"
    }
   ],
   "severity": "high"
@@ -300,7 +305,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -309,7 +314,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -344,7 +349,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -353,7 +358,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -388,7 +393,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -397,7 +402,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -428,7 +433,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -437,7 +442,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -468,7 +473,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -477,7 +482,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -521,7 +526,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -530,7 +535,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -570,7 +575,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -579,7 +584,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -618,7 +623,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -627,7 +632,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -662,7 +667,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -671,7 +676,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -706,7 +711,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -715,7 +720,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -755,7 +760,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -764,7 +769,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -804,7 +809,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -813,7 +818,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -848,7 +853,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -857,7 +862,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -896,7 +901,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -905,7 +910,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -940,7 +945,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -949,7 +954,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -984,7 +989,7 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -993,7 +998,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -1031,7 +1036,7 @@
    },
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -1040,7 +1045,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -1082,7 +1087,7 @@
    },
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -1091,7 +1096,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
@@ -1130,7 +1135,7 @@
    },
    {
     "do": "wait_for",
-    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "target": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result|run-message",
     "seconds": 150,
     "busy": "run-busy-note"
    }
@@ -1139,7 +1144,7 @@
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "arg": "run-result|run-steplog|idcopy-result|passport-score|scam-verdict|code-tested|code-finish|chat-finish|deal-finish|gif-finish|still-finish|video-finish|video-size-check|video-speed-check|video-sound-check|listen-finish|link-finish|text-finish|table-finish|voice-finish|fun-finish|animate-finish|finish-one-pdf|finish-one-page|finish-join-pdf|finish-collage|pdf-size-check|pdf-search-check|pdf-lock-check|keep-share|keep-saved|celebrate-result",
     "why_pass": "The tool finished and showed its result screen",
     "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
    },
