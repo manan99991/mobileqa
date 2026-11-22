@@ -1,0 +1,55 @@
+# End-to-end self-test of the customer path, exactly as a paying customer hits it:
+# 1) upload an APK with the PUBLIC key (same calls as getitlisted.app/submit)
+# 2) the scheduler step picks it up through engine-api (GitHub OIDC, no stored key)
+# 3) the normal test workflow runs it and publishes the report to the dashboard
+name: Get It Listed — end-to-end self-test
+on:
+  push:
+    branches: [getitlisted-engine]
+    paths: ["getitlisted/e2e/**"]
+
+jobs:
+  customer-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload like a customer (public key only)
+        env:
+          SB: https://ljdedtgsijrettyrggpy.supabase.co
+          PK: sb_publishable_6GcLgyki0_QFcyvd7FzDrA_qg9h3zcB
+        run: |
+          curl -fsSL https://f-droid.org/repo/org.fossify.notes_13.apk -o app.apk
+          P="gil-selftest/$(date +%s)/app.apk"
+          code=$(curl -s -o up.txt -w "%{http_code}" -X POST "$SB/storage/v1/object/builds/$P" \
+            -H "apikey: $PK" -H "Authorization: Bearer $PK" -H "Content-Type: application/octet-stream" --data-binary @app.apk)
+          echo "storage upload: $code"; [ "$code" -lt 300 ] || { cat up.txt; exit 1; }
+          code=$(curl -s -o ins.txt -w "%{http_code}" -X POST "$SB/rest/v1/builds" \
+            -H "apikey: $PK" -H "Authorization: Bearer $PK" -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+            -d "{\"app_key\":\"gil-selftest\",\"apk_path\":\"$P\",\"notes\":\"Skip the Settings screen.\",\"status\":\"pending\"}")
+          echo "builds insert: $code"; [ "$code" -lt 300 ] || { cat ins.txt; exit 1; }
+          # a customer must NOT be able to read builds back
+          n=$(curl -s "$SB/rest/v1/builds?select=id" -H "apikey: $PK" -H "Authorization: Bearer $PK")
+          echo "anon read-back: $n"; [ "$n" = "[]" ] || { echo "::error::builds are readable by the public"; exit 1; }
+
+  pick:
+    needs: customer-upload
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    outputs:
+      ids: ${{ steps.p.outputs.ids }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        run: |
+          ids=$(cd getitlisted && python3 queue.py pick)
+          echo "picked: $ids"; echo "ids=$ids" >> $GITHUB_OUTPUT
+          [ "$ids" != "[]" ] || { echo "::error::scheduler did not pick the upload"; exit 1; }
+
+  test:
+    needs: pick
+    permissions: { contents: read, id-token: write }
+    strategy:
+      matrix:
+        build_id: ${{ fromJSON(needs.pick.outputs.ids) }}
+    uses: ./.github/workflows/getitlisted.yml
+    with:
+      build_id: ${{ format('{0}', matrix.build_id) }}

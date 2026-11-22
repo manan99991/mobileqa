@@ -18,7 +18,11 @@ const REPO = "manan99991/mobileqa";
 const REFS = ["refs/heads/main", "refs/heads/getitlisted-engine"];
 const AUD = "getitlisted-engine";
 const JWKS = createRemoteJWKSet(new URL("https://token.actions.githubusercontent.com/.well-known/jwks"));
-const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+// built-in server key: legacy service_role, or the new secret key map
+const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || (() => {
+  try { return String(Object.values(JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}"))[0] || ""); } catch { return ""; }
+})();
+const sb = createClient(Deno.env.get("SUPABASE_URL")!, SERVICE, { auth: { persistSession: false } });
 const URL_BASE = Deno.env.get("SUPABASE_URL")!;
 const DAY_GAP_H = 20, MAX_PICK = 4;
 
