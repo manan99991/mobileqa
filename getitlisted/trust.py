@@ -121,7 +121,11 @@ def main():
         title = (f.get("title") or "").lower()
         ev = f.get("evidence") or {}
         from_screen = "error screen" in title or "error boundary" in (f.get("detail") or "").lower()
-        if from_screen:
+        is_freeze = "not responding" in title or "froze" in title or "freeze" in title
+        if is_freeze:
+            # ANRs never appear in the crash buffer: keep only if the freeze happens again on replay
+            match = None
+        elif from_screen:
             # the app's own error-boundary screen — app-scoped by construction
             match = app_crashes[0] if app_crashes else None
         else:

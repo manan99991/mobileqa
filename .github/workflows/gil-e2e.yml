@@ -53,3 +53,4 @@ jobs:
     uses: ./.github/workflows/getitlisted.yml
     with:
       build_id: ${{ format('{0}', matrix.build_id) }}
+    secrets: inherit

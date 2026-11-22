@@ -98,9 +98,20 @@ def main():
             parts = line.split()
             if len(parts) == 2 and (vdir / parts[0]).exists() and (vdir / parts[0]).stat().st_size > 10_000:
                 segs.append((parts[0], float(parts[1])))
+    # upload only the parts that show a bug (plus the opening part) to keep storage small
+    def seg_for(t):
+        c = [nm for nm, st in segs if st <= t]
+        return c[-1] if c else None
+    needed = {segs[0][0]} if segs else set()
+    for f in data["findings"]:
+        if f.get("t"):
+            nm = seg_for(f["t"])
+            if nm:
+                needed.add(nm)
     seg_url = {}
-    for name, _ in segs[:8]:
-        seg_url[name] = upload(vdir / name, f"{base}/{name}")
+    for name, _ in segs:
+        if name in needed and len(seg_url) < 12:
+            seg_url[name] = upload(vdir / name, f"{base}/{name}")
     data["video_urls"] = [seg_url[nm] for nm, _ in segs if nm in seg_url]
     for f in data["findings"]:
         t = f.get("t")

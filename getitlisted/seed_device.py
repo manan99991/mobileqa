@@ -132,6 +132,14 @@ def main():
     sh("content call --uri content://media --method scan_volume --arg external_primary")
     sh("am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/DCIM/Camera")
     c = sum(1 for ct in CONTACTS if add_contact(*ct))
+    # manifest of what the phone holds, so functional checks can compare outputs to inputs
+    man = {"files": [], "contacts": len(CONTACTS)}
+    for f in sorted(tmp.iterdir()):
+        man["files"].append({"name": f.name, "bytes": f.stat().st_size,
+                             "kind": "image" if f.suffix in (".jpg", ".png") else "video" if f.suffix == ".mp4"
+                             else "audio" if f.suffix in (".m4a", ".mp3") else "document",
+                             "gps": f.suffix == ".jpg"})
+    Path(os.environ.get("GIL_SEED_MANIFEST", "seed_manifest.json")).write_text(__import__("json").dumps(man, indent=1))
     print(f"seeded {n} files and {c} contacts")
 
 

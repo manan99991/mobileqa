@@ -269,7 +269,12 @@ def from_run(run_dir, app_name, platform, url_map=None):
             "exception": ev.get("exception", ""), "app_frame": ev.get("app_frame", ""),
             "stack": stack[:3000], "log": ev.get("log", "") if ev.get("log") not in ("ANR",) else "",
             "obfuscated": ev.get("obfuscated", False),
+            "expected_text": f.get("expected_text") or "", "actual_text": f.get("actual_text") or "",
+            "checks": f.get("checks") or [], "test_case": f.get("test_case") or "", "feature": f.get("feature") or "",
+            "judge_evidence": f.get("judge_evidence") or "",
         })
+        if f.get("fix_text"):
+            findings[-1]["tip"] = f["fix_text"]
     order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     if str(platform).lower().startswith("ios"):
         for f in findings:
@@ -285,7 +290,8 @@ def from_run(run_dir, app_name, platform, url_map=None):
             "findings": findings, "coverage": summary, "screens": [],
             "app_logs": (json.loads((run_dir / "app_logs.json").read_text()) if (run_dir / "app_logs.json").exists()
                          else app_log_excerpt(run_dir, summary.get("pids") or [])),
-            "video_urls": [], "log_url": "", "icon_url": ""}
+            "video_urls": [], "log_url": "", "icon_url": "",
+            "tests": (json.loads((run_dir / "test_results.json").read_text()) if (run_dir / "test_results.json").exists() else None)}
 
 
 # ─────────────────────────── charts (inline SVG, no scripts) ───────────────────────────
@@ -419,6 +425,9 @@ def build(data):
         expected, actual, impact, ref = (EXPLAIN_IOS if ios else EXPLAIN).get(f["kind"], EXPLAIN.get(f["kind"], ("", "", "", "")))
         if f["kind"] in ("crash", "anr", "stress", "nonfatal", "coldstart") and f.get("detail"):
             actual = f["detail"]
+        if f.get("expected_text"):
+            expected, actual = f["expected_text"], f.get("actual_text") or f.get("detail") or ""
+            impact = impact or "Users trying to do this don\u2019t get the result the feature promises."
         rep = ""
         if f.get("reproduction") in REP:
             lab, rc = REP[f["reproduction"]]
@@ -446,29 +455,71 @@ def build(data):
                       f'<figcaption>Right after — the app has closed</figcaption></figure>')
         cause = ""
         if f.get("exception") or f.get("app_frame") or f.get("stack") or f.get("log"):
-            cause = ('<div class="blk"><h4>Root cause (from the crash log)</h4><div class="cause">'
+            cause = ('<div class="blk"><h4>' + ("Root cause (from the crash log)" if f["kind"] in ("crash", "stress", "anr") else "App log during this test") + '</h4><div class="cause">'
                      + (f'<div><span>Exception</span><code>{e(f["exception"])}</code></div>' if f.get("exception") else "")
                      + (f'<div><span>Your code</span><code>{e(f["app_frame"])}</code></div>' if f.get("app_frame") else "")
                      + (f'<pre>{e(f["stack"])}</pre>' if f.get("stack") else (f'<pre>{e(f["log"])}</pre>' if f.get("log") else ""))
                      + ('<p class="obf">This build is obfuscated. Upload your mapping.txt and we’ll show the exact source line.</p>' if f.get("obfuscated") else "")
                      + '</div></div>')
         repro = "".join(f"<li>{e(s)}</li>" for s in f["repro"][:25])
+        checks_html = ""
+        if f.get("checks"):
+            checks_html = ('<div class="blk"><h4>What we checked on the device</h4><ul class="checks">'
+                           + "".join(f'<li class="{c.get("status")}"><b>{"\u2713" if c.get("status") == "pass" else "\u2717"}</b> {e(c.get("evidence"))}</li>'
+                                     for c in f["checks"]) + '</ul>'
+                           + (f'<p class="muted">Seen on screen: {e(f["judge_evidence"])}</p>' if f.get("judge_evidence") else "")
+                           + '</div>')
         return f'''<article class="bug" id="{f["id"]}" style="border-top-color:{scol}">
       <header><span class="bid">{f["id"]}</span><h3>{e(f["title"])}</h3>
         <div class="chips"><span class="chip solid" style="background:{scol}">{sname}</span>
         <span class="chip" style="color:{pcol};border-color:{pcol}66">{plab}</span>
-        <span class="chip">{e(CATEGORY.get(f["category"], f["category"].title()))}</span>{rep}</div></header>
+        <span class="chip">{e(CATEGORY.get(f["category"], f["category"].title()))}</span>{rep}{f'<span class="chip">Test {e(f["test_case"])}</span>' if f.get("test_case") else ""}</div></header>
       <div class="bgrid"><div>
         <div class="blk"><h4>Where</h4>{loc_html}</div>
         {f'<div class="ea"><div><h4>Expected</h4><p>{e(expected)}</p></div><div><h4>Actual</h4><p>{e(actual)}</p></div></div>' if expected else f'<div class="blk"><h4>What happens</h4><p>{e(f["detail"])}</p></div>'}
         {f'<div class="blk"><h4>Who it affects</h4><p>{e(impact)}</p></div>' if impact else ""}
         {f'<div class="blk"><h4>Steps to reproduce</h4><ol>{repro}</ol></div>' if repro else ""}
+        {checks_html}
         {cause}
         {f'<div class="fix"><h4>Suggested fix</h4><p>{e(f["tip"])}</p>' + (f'<a href="{e(ref)}">Android guidance</a>' if ref else "") + '</div>' if f.get("tip") else ""}
       </div><div class="shots">{shots or '<p class="muted">No screenshot for this issue type — see the steps and log.</p>'}</div></div>
     </article>'''
 
     bugs = "".join(card(f) for f in findings)
+
+    # ── what we learned + the test plan we ran
+    T = data.get("tests") or {}
+    learned = plan_html = ""
+    if T.get("skipped"):
+        plan_html = (f'<section class="card"><h2>Functional testing</h2><p class="muted">Deep functional testing did not run on this pass '
+                     f'({e(T["skipped"])}). The results above come from the crawl, stress and accessibility checks only.</p></section>')
+    elif T.get("results") is not None:
+        feats = T.get("features") or []
+        res = T.get("results") or []
+        if feats:
+            learned = (f'<section class="card"><h2>What we learned about {e(app_name)} <span class="n">{len(feats)} features</span></h2>'
+                       + (f'<p class="muted">{e(T.get("app_summary"))}</p>' if T.get("app_summary") else "")
+                       + '<div class="feats">' + "".join(
+                           f'<div class="feat"><b>{e(x.get("name"))}</b><span>{e(x.get("purpose") or x.get("expected_result") or "")}</span>'
+                           f'<i>Starts on: {e(x.get("entry_screen"))}</i></div>' for x in feats) + '</div></section>')
+        cnt = {k: sum(1 for r in res if r.get("verdict") == k) for k in ("pass", "fail", "review", "blocked", "inconclusive", "not_run", "error")}
+        VCOL = {"pass": ("Passed", "#0E9F7B"), "fail": ("Failed", "#D61F5B"), "review": ("Needs a human look", "#B87900"),
+                "blocked": ("Couldn\u2019t run", "#5E5A80"), "inconclusive": ("Inconclusive", "#8A86A8"),
+                "not_run": ("Not run (time)", "#8A86A8"), "error": ("Test error", "#8A86A8")}
+        fname = {x.get("id"): x.get("name") for x in feats}
+        chart = donut([(VCOL[k][0], cnt[k], VCOL[k][1]) for k in ("pass", "fail", "review", "blocked", "inconclusive", "not_run") if cnt[k]], "tests")
+        rows2 = "".join(
+            f'<tr><td>{e(r.get("id"))}</td><td>{e(fname.get(r.get("feature_id"), ""))}</td><td>{e(r.get("title"))}'
+            + (f'<div class="sub">{e(r.get("actual"))}</div>' if r.get("verdict") in ("fail", "review", "blocked") and r.get("actual") else "")
+            + f'</td><td>{e((r.get("type") or "").title())}</td>'
+            f'<td><span class="sev" style="color:{VCOL.get(r.get("verdict"), VCOL["inconclusive"])[1]};background:#F7F5FF">{VCOL.get(r.get("verdict"), VCOL["inconclusive"])[0]}</span></td></tr>'
+            for r in res)
+        plan_html = (f'<section class="card"><h2>Functional test plan & results <span class="n">{len(res)} tests</span></h2>'
+                     f'<div class="planhead">{chart}<p class="muted">We wrote these tests from what each feature is supposed to do, ran each one on the device '
+                     f'with real photos, videos, documents and contacts, and checked the outcome on the device itself. A test is marked '
+                     f'<b>Failed</b> only when it failed twice with evidence; anything uncertain is <b>Needs a human look</b> and is not counted as a bug.</p></div>'
+                     f'<div class="tw"><table><thead><tr><th>Test</th><th>Feature</th><th>What we tested</th><th>Type</th><th>Result</th></tr></thead>'
+                     f'<tbody>{rows2}</tbody></table></div></section>')
 
     # ── screens gallery
     gal = data.get("screens") or []
@@ -602,12 +653,17 @@ figure img{{width:100%;border-radius:16px;border:2px solid var(--line);display:b
 .ll.E,.ll.F{{color:#FF8FB4}}.ll.W{{color:#FFD37A}}
 .envg{{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}}
 .muted{{color:var(--muted);font-size:14px}}.empty{{color:var(--muted)}}
+.checks{{list-style:none;font-size:14px}}.checks li{{padding:4px 0}}.checks li.pass b{{color:#0E9F7B}}.checks li.fail b{{color:#D61F5B}}
+.feats{{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:12px}}
+.feat{{background:var(--bg);border-radius:16px;padding:12px 14px;font-size:13.5px;display:grid;gap:4px}}.feat i{{color:var(--faint);font-size:12px}}
+.planhead{{display:flex;gap:20px;align-items:center;margin-bottom:14px;flex-wrap:wrap}}.planhead p{{flex:1;min-width:240px}}
+td .sub{{font-size:12.5px;color:var(--muted);margin-top:3px}}
 .foot{{text-align:center;color:var(--muted);font-size:13px;margin-top:22px}}
 @media(max-width:820px){{.hero,.bgrid,.charts,.envg,.ea{{grid-template-columns:1fr}}.tiles{{grid-template-columns:repeat(3,1fr)}}.score{{flex-wrap:wrap}}}}
 @media(max-width:480px){{.tiles{{grid-template-columns:repeat(2,1fr)}}.card,.hero,.bug{{padding:18px}}.kv{{flex-direction:column;gap:2px}}.hb{{grid-template-columns:80px 1fr 50px}}}}
 @media print{{body{{background:#fff;padding:0}}.card,.hero,.bug{{break-inside:avoid;box-shadow:0 0 0 1px var(--line)}}.btn{{display:none}}}}
 </style></head><body><div class="wrap">
 <div class="brandbar"><div class="b"><svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="10" fill="#5B3DF5"/><path d="M9 16.5l4.5 4.5L23 11.5" stroke="#fff" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Get It Listed</div><small>Automated QA report</small></div>
-{hero}{glance}{nexts}{table}{bugs}{gallery}{perf_html}{surface}{log_html}{env_html}{method}
+{hero}{glance}{nexts}{learned}{plan_html}{table}{bugs}{gallery}{perf_html}{surface}{log_html}{env_html}{method}
 <div class="foot">Prepared for {e(app_name)} by Get It Listed · getitlisted.app · Questions: hello@getitlisted.app</div>
 </div></body></html>'''

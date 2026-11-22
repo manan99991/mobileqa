@@ -20,6 +20,7 @@ on:
       app_key:  { type: string, required: false, default: "" }
       app_name: { type: string, required: false, default: "" }
       minutes:  { type: string, required: false, default: "" }
+      agent_minutes: { type: string, required: false, default: "" }
       seed:     { type: boolean, required: false, default: true }
   workflow_dispatch:
     inputs:
@@ -35,11 +36,14 @@ permissions:
 
 env:
   BUILD_ID: ${{ inputs.build_id }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GIL_AGENT_MINUTES: ${{ inputs.agent_minutes || '40' }}
+  GIL_VERBOSE: ${{ inputs.source_repo != '' && '1' || '0' }}
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 100
+    timeout-minutes: 170
     steps:
       - uses: actions/checkout@v4
         with: { repository: manan99991/mobileqa, ref: getitlisted-engine }
@@ -144,11 +148,20 @@ jobs:
 
           timeout --signal=TERM $((GIL_MINUTES + 25))m python getitlisted/crawler.py explore
           echo "crawler exit $?"
+          RUN_DIR=$(ls -dt reports/*/ 2>/dev/null | head -1)
+          [ -z "$RUN_DIR" ] && { echo "::error::no run output"; exit 1; }
+          echo "== deep functional testing (learn -> plan -> run -> verify -> confirm) =="
+          if [ -n "$GEMINI_API_KEY" ]; then
+            pip install -q pillow >/dev/null 2>&1
+            timeout --signal=TERM $(( ${GIL_AGENT_MINUTES:-40} + 15 ))m python getitlisted/agent.py "$RUN_DIR"
+            echo "agent exit $?"
+          else
+            echo "no AI key: functional testing skipped"
+            python3 -c "import json,sys;open(sys.argv[1]+'/test_results.json','w').write(json.dumps({'skipped':'no AI key configured','results':[]}))" "$RUN_DIR"
+          fi
           kill $REC_PID 2>/dev/null; adb shell pkill -INT screenrecord 2>/dev/null; sleep 4
           for f in $(adb shell ls /sdcard/ 2>/dev/null | tr -d '\r' | grep '^seg_.*mp4$'); do adb pull /sdcard/$f /tmp/vid/ >/dev/null 2>&1; done
           echo "video segments: $(ls /tmp/vid/*.mp4 2>/dev/null | wc -l)"
-          RUN_DIR=$(ls -dt reports/*/ 2>/dev/null | head -1)
-          [ -z "$RUN_DIR" ] && { echo "::error::no run output"; exit 1; }
 
           adb logcat -d > "$RUN_DIR/logcat.txt" 2>/dev/null
           # release builds: turn obfuscated stack frames back into real class/line names
