@@ -156,7 +156,13 @@ def trust(run: Path, app: Path, since: float):
     (run / "findings.trusted.json").write_text(json.dumps(kept, indent=1))
     state = json.loads((run / "ios_state.json").read_text()) if (run / "ios_state.json").exists() else {}
     summ = json.loads((run / "summary.json").read_text()).get("summary", {}) if (run / "summary.json").exists() else {}
-    status = "inconclusive" if (state.get("foregrounded") is False or summ.get("screens", 0) == 0) else "ok"
+    ran = 0
+    try:   # functional tests that really ran on the app count as testing, even if the map phase stopped early
+        ran = sum(1 for r in json.loads((run / "test_results.json").read_text()).get("results", [])
+                  if r.get("verdict") not in ("not_run", "blocked"))
+    except Exception:
+        pass
+    status = "inconclusive" if ((state.get("foregrounded") is False or summ.get("screens", 0) == 0) and not ran) else "ok"
     (run / "run_meta.json").write_text(json.dumps({"status": status, "reason": "app never reached a screen" if status != "ok" else "",
                                                      "kept": len(kept), "dropped": dropped, "crash_reports": len(reports)}))
     # app's own log: errors and faults from the unified log, plus all crash reports, as the downloadable log

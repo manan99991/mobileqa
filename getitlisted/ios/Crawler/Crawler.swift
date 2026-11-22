@@ -554,12 +554,12 @@ final class GILCrawler: XCTestCase {
             var n = 0
             for i in 0..<250 {
                 let p = CGPoint(x: screenFrame.width * (0.05 + 0.9 * rng.unit()), y: screenFrame.height * (0.08 + 0.84 * rng.unit()))
+                // a tap can legitimately open another app (Settings, Safari, Mail): come back before the next one,
+                // or the test framework waits on a backgrounded app until it times out
+                if app.state == .notRunning { crashed = true; break }
+                if app.state != .runningForeground { app.activate(); sleep(1); continue }
                 tapPoint(p); n = i + 1
-                if i % 10 == 9 {
-                    _ = handleSystemAlerts()
-                    if app.state == .notRunning { crashed = true; break }
-                    if app.state != .runningForeground { app.activate(); sleep(1) }
-                }
+                if i % 10 == 9 { _ = handleSystemAlerts() }
             }
             stress.append(["seed": seed, "events": n, "crash": crashed, "anr": false])
             if crashed {
@@ -605,12 +605,10 @@ final class GILCrawler: XCTestCase {
                 _ = snapshotEls()
                 for j in 0..<(st["events"] as? Int ?? 250) {
                     let p = CGPoint(x: screenFrame.width * (0.05 + 0.9 * rng.unit()), y: screenFrame.height * (0.08 + 0.84 * rng.unit()))
+                    if app.state == .notRunning { crashed = true; break stepLoop }
+                    if app.state != .runningForeground { app.activate(); sleep(1); continue }   // same rule as the crawl
                     tapPoint(p)
-                    if j % 10 == 9 {
-                        _ = handleSystemAlerts()
-                        if app.state == .notRunning { crashed = true; break stepLoop }
-                        if app.state != .runningForeground { app.activate(); sleep(1) }
-                    }
+                    if j % 10 == 9 { _ = handleSystemAlerts() }
                 }
             case "tap", "type":
                 var p = CGPoint(x: st["x"] as? Double ?? 0, y: st["y"] as? Double ?? 0)
