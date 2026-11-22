@@ -123,7 +123,7 @@ class Adb:
         return len(re.findall(r"Process:\s*" + re.escape(pkg) + r"\b", out))
 
     def anr_count(self, pkg: str) -> int:
-        out = self.sh("logcat -d -b system -b main | grep -c 'ANR in " + pkg + "'", timeout=30)
+        out = self.sh("logcat -d -b events | grep -c 'am_anr.*" + pkg + "'", timeout=30)
         try: return int(out.strip().splitlines()[-1])
         except Exception: return 0
 
@@ -318,14 +318,14 @@ class Crawler:
     def _settle(self) -> tuple[dict, float]:
         t0 = self.clock()
         prev, ui = None, None
-        for _ in range(4):
+        for _ in range(3):
             xml = self.adb.dump()
             ui = parse_ui(xml, self.pkg)
             sig = tuple(el_key(e) for e in ui["elements"])
             if sig == prev and ui["ok"]:
                 break
             prev = sig
-            self.sleep(0.6)
+            self.sleep(0.3)
         return ui, self.clock() - t0
 
     def _note_pids(self):
@@ -542,7 +542,7 @@ class Crawler:
         return self._finish(duration)
 
     def _pss(self) -> int | None:
-        out = self.adb.sh(f"dumpsys meminfo {self.pkg} | grep -E 'TOTAL( PSS)?:?\\s'")
+        out = self.adb.sh(f"dumpsys meminfo {self.pkg}")
         m = re.search(r"TOTAL(?: PSS)?:?\s+(\d+)", out)
         return int(m.group(1)) if m else None
 

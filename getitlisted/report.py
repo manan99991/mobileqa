@@ -181,9 +181,7 @@ def build(data):
         rows.append(("Cold start", " · ".join(f"{t/1000:.1f}s" for t in cs)))
     if perf.get("mem_start_kb") and perf.get("mem_end_kb"):
         rows.append(("Memory (PSS)", f'{perf["mem_start_kb"]//1024} MB at launch → {perf["mem_end_kb"]//1024} MB after the full session'))
-    jk = perf.get("jank") or {}
-    if jk.get("janky_pct") is not None:
-        rows.append(("Smoothness", f'{jk["janky_pct"]:.0f}% janky frames of {jk.get("frames") or "?"} rendered'))
+    # frame jank is not reported: the CI emulator renders in software, so it would blame the app for our machine
     st = perf.get("stress") or []
     if st:
         bad = sum(1 for r in st if r.get("crash") or r.get("anr"))
