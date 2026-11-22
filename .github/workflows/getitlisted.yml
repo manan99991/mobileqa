@@ -1,6 +1,6 @@
 # Get It Listed — black-box QA run.
 # Give it a customer's APK (a URL) + their app_key; it installs the app on a free
-# Linux emulator, explores it end-to-end with the mobileqa engine, renders the
+# Linux emulator, tests it end-to-end with the key-free crawler (no AI, no cost), renders the
 # customer report and publishes it to the Get It Listed dashboard (Supabase).
 #
 # Trigger by hand (Actions tab) OR programmatically via repository_dispatch:
@@ -8,7 +8,6 @@
 #     {"event_type":"gil-test","client_payload":{"apk_url":"…","app_key":"…","app_name":"…"}}
 #
 # One-time repo secrets (Settings → Secrets → Actions):
-#   GEMINI_API_KEY    free Google key — the engine's vision brain
 #   SB_URL            https://ljdedtgsijrettyrggpy.supabase.co
 #   SB_SERVICE_KEY    Supabase service-role key (never public)
 
@@ -20,22 +19,18 @@ on:
       apk_url:  { description: "Direct URL to the customer's APK", required: true }
       app_key:  { description: "Client app_key (matches clients.app_key)", required: true }
       app_name: { description: "App display name", required: false, default: "Customer app" }
-      steps:    { description: "Exploration budget (actions)", required: false, default: "120" }
+      minutes:  { description: "Crawl budget in minutes", required: false, default: "12" }
   repository_dispatch:
     types: [gil-test]
 
 env:
-  MOBILEQA_LLM_BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai/
-  MOBILEQA_LLM_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-  MOBILEQA_MODEL: gemini-flash-latest
-  MOBILEQA_VISION_MODEL: gemini-flash-latest
   SB_URL: ${{ secrets.SB_URL }}
   SB_SERVICE_KEY: ${{ secrets.SB_SERVICE_KEY }}
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -46,12 +41,12 @@ jobs:
             echo "apk_url=${{ github.event.client_payload.apk_url }}"   >> $GITHUB_OUTPUT
             echo "app_key=${{ github.event.client_payload.app_key }}"   >> $GITHUB_OUTPUT
             echo "app_name=${{ github.event.client_payload.app_name }}" >> $GITHUB_OUTPUT
-            echo "steps=${{ github.event.client_payload.steps || 120 }}" >> $GITHUB_OUTPUT
+            echo "minutes=${{ github.event.client_payload.minutes || 12 }}" >> $GITHUB_OUTPUT
           else
             echo "apk_url=${{ github.event.inputs.apk_url }}"   >> $GITHUB_OUTPUT
             echo "app_key=${{ github.event.inputs.app_key }}"   >> $GITHUB_OUTPUT
             echo "app_name=${{ github.event.inputs.app_name }}" >> $GITHUB_OUTPUT
-            echo "steps=${{ github.event.inputs.steps }}"       >> $GITHUB_OUTPUT
+            echo "minutes=${{ github.event.inputs.minutes }}"   >> $GITHUB_OUTPUT
           fi
 
       - name: Free runner disk space
@@ -60,12 +55,6 @@ jobs:
           sudo docker system prune -af > /dev/null 2>&1 || true
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-
-      - name: Install mobileqa + Appium + OpenAI client (for Gemini)
-        run: |
-          pip install -e . openai
-          npm install -g appium
-          appium driver install uiautomator2
 
       - name: Download the customer APK
         run: |
@@ -94,7 +83,7 @@ jobs:
           GIL_APP_NAME: ${{ steps.in.outputs.app_name }}
           GIL_APP_KEY: ${{ steps.in.outputs.app_key }}
           GIL_PLATFORM: Android
-          GIL_STEPS: ${{ steps.in.outputs.steps }}
+          GIL_MINUTES: ${{ steps.in.outputs.minutes }}
         run: |
           set +e
           exec > >(tee mobileqa.log) 2>&1
@@ -115,16 +104,15 @@ jobs:
           done
           [ "$booted" = "1" ] || { echo "EMULATOR DID NOT BOOT"; tail -20 emulator.log; exit 1; }
           adb shell input keyevent 82 >/dev/null 2>&1 || true
-          echo "== appium =="
-          nohup appium --relaxed-security --log appium.log > /dev/null 2>&1 &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 2; done
+          echo "== install app =="
+          adb install -r -g app.apk || { echo "::error::APK would not install"; exit 1; }
           echo "== start screen recording (rolling 170s segments) =="
           mkdir -p /tmp/vid
           ( n=0; while true; do adb shell screenrecord --time-limit 170 --bit-rate 2000000 /sdcard/seg_$n.mp4 2>/dev/null; adb pull /sdcard/seg_$n.mp4 /tmp/vid/ 2>/dev/null; n=$((n+1)); done ) &
           REC_PID=$!
-          echo "== explore (black-box) =="
-          timeout --signal=TERM 20m python -m mobileqa.cli explore getitlisted/app.blackbox.yaml --steps "$GIL_STEPS"
-          rc=$?; echo "== agent exit $rc =="
+          echo "== crawl + stress (key-free) =="
+          timeout --signal=TERM 28m python getitlisted/crawler.py explore
+          rc=$?; echo "== crawler exit $rc =="
           kill $REC_PID 2>/dev/null; sleep 3
           RUN_DIR=$(ls -dt reports/*/ 2>/dev/null | head -1)
           [ -z "$RUN_DIR" ] && { echo "::warning::no run dir"; exit 0; }
@@ -140,13 +128,8 @@ jobs:
           export SZ=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | head -1)
           export FG=$(adb shell "dumpsys activity activities | grep -c $GIL_PACKAGE" | tr -d '\r')
           python3 -c "import json,os;s=(os.environ.get('SZ','') or '').split('x');json.dump({'model':os.environ.get('MODEL') or 'Android emulator','api':os.environ.get('API'),'density':os.environ.get('DENS'),'width':(s+[''])[0],'height':(s+['',''])[1],'foregrounded':int(os.environ.get('FG') or 0)>0}, open(os.environ['RD']+'/device.json','w'))"
-          # reproduce pass: replay the generated suite 3x to confirm crashes
-          echo "== reproduce pass =="
-          if [ -d /tmp/gil_suite ] && [ -n "$(ls -A /tmp/gil_suite 2>/dev/null)" ]; then
-            python getitlisted/reproduce.py "$RUN_DIR" /tmp/gil_suite 3 || echo "::warning::reproduce pass skipped"
-          else
-            echo "no suite generated — findings labelled single-occurrence"
-          fi
+          echo "== reproduce pass (replay every crash 3x from a clean install) =="
+          timeout 10m python getitlisted/crawler.py replay "$RUN_DIR" 3 || echo "::warning::reproduce pass incomplete"
           # TRUST GATE: keep only app-scoped, reproduced crashes; drop env/system noise
           echo "== trust gate =="
           GIL_RUN_DIR="$RUN_DIR" python getitlisted/trust.py || echo "::warning::trust gate error"

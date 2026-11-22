@@ -35,6 +35,7 @@ TIP = {
     "perf":       "Show a loading state and speed up this screen; a blank frame reads as frozen.",
     "content":    "Replace the placeholder or incorrect copy before a reviewer sees it.",
     "security":   "Review the flagged behavior — it could trip Google Play policy.",
+    "stability":  "Find where this error is caught and fix the bad data feeding it before it turns into a crash.",
 }
 
 e = lambda s: html.escape(str(s if s is not None else ""))
@@ -94,7 +95,7 @@ def from_run(run_dir, app_name, platform, url_map=None):
     }
     return {"app_name": app_name, "platform": platform, "device": device,
             "run_at": datetime.date.today().isoformat(),
-            "stats": stats, "findings": findings, "screens": []}
+            "stats": stats, "findings": findings, "screens": [], "coverage": summary}
 
 
 def build(data):
@@ -172,6 +173,43 @@ def build(data):
     evidence_html = (f'<div class="card"><div class="sec-title">Evidence</div><div class="evrow">{"".join(ev_links)}</div>'
                      f'<div class="method" style="margin-top:10px">Screen recording of the full session and the complete device log — every finding above is traceable to these.</div></div>') if ev_links else ""
 
+    cov = data.get("coverage") or {}
+    perf = cov.get("performance") or {}
+    rows = []
+    cs = perf.get("cold_start_ms") or []
+    if cs:
+        rows.append(("Cold start", " · ".join(f"{t/1000:.1f}s" for t in cs)))
+    if perf.get("mem_start_kb") and perf.get("mem_end_kb"):
+        rows.append(("Memory (PSS)", f'{perf["mem_start_kb"]//1024} MB at launch → {perf["mem_end_kb"]//1024} MB after the full session'))
+    jk = perf.get("jank") or {}
+    if jk.get("janky_pct") is not None:
+        rows.append(("Smoothness", f'{jk["janky_pct"]:.0f}% janky frames of {jk.get("frames") or "?"} rendered'))
+    st = perf.get("stress") or []
+    if st:
+        bad = sum(1 for r in st if r.get("crash") or r.get("anr"))
+        rows.append(("Stress test", f'{len(st)} seeded random-input runs · {sum((r.get("events") or 0) for r in st):,} events · '
+                     + ("survived all" if not bad else f"{bad} failed")))
+    ne = cov.get("network_errors") or {}
+    if ne:
+        rows.append(("Network errors logged", ", ".join(f"{k} ×{v}" for k, v in ne.items()) + " (could be the test network — informational)"))
+    integ = cov.get("integrations") or []
+    if integ:
+        apps = sorted({i.get("opened", "") for i in integ})
+        rows.append(("Hands off to", ", ".join(apps)))
+    dec = cov.get("declared") or {}
+    if dec.get("permissions"):
+        rows.append(("Permissions", ", ".join(p.replace("android.permission.", "") for p in dec["permissions"][:12])))
+    if dec.get("deep_links"):
+        rows.append(("Deep links", ", ".join(dec["deep_links"][:6])))
+    scr = cov.get("screen_list") or []
+    cov_html = ""
+    if rows or scr:
+        cov_html = ('<div class="card"><div class="sec-title">Coverage · performance · integrations</div>'
+                    + "".join(f'<div class="kv"><span>{e(k)}</span><b>{e(v)}</b></div>' for k, v in rows)
+                    + (f'<details class="scr"><summary>{len(scr)} screens reached</summary><ul>'
+                       + "".join(f'<li>{e(x.get("name"))} <i>· {x.get("controls",0)} controls</i></li>' for x in scr) + '</ul></details>' if scr else "")
+                    + '</div>')
+
     return f'''<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -218,6 +256,8 @@ def build(data):
   .method{{color:var(--muted);font-size:13.5px}}.method b{{color:var(--text)}}
   .evrow{{display:flex;gap:10px;flex-wrap:wrap}}
   .evl{{display:inline-block;font-size:13.5px;font-weight:600;padding:9px 14px;border-radius:10px;background:var(--card2);border:1px solid var(--line2);color:var(--text);text-decoration:none}}
+  .kv{{display:flex;gap:14px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px;flex-wrap:wrap}}.kv span{{color:var(--muted);min-width:130px}}.kv b{{font-weight:600;flex:1}}
+  .scr{{margin-top:12px;font-size:13.5px;color:var(--muted)}}.scr summary{{cursor:pointer;color:var(--text);font-weight:600}}.scr ul{{margin:8px 0 0 18px}}.scr i{{color:var(--faint)}}
   .foot{{text-align:center;color:var(--faint);font-size:12px;margin-top:24px}}.foot a{{color:var(--muted)}}
   @media(max-width:480px){{.appname{{font-size:23px}}}}
 </style></head><body><div class="wrap">
@@ -237,9 +277,10 @@ def build(data):
       {tile("minutes", mins)}
       {tile("issues found", len(findings))}</div></div>
   <div class="card"><div class="sec-title">Findings{f' · {len(findings)}' if findings else ''}</div>{findings_html}</div>
+  {cov_html}
   {evidence_html}
   <div class="card"><div class="sec-title">How this was tested</div>
-    <div class="method">An automated agent installed your build on a real Android environment and explored it like a person — tapping every control, opening every screen, filling forms with normal and hostile input, and watching for crashes, dead buttons, blank results, broken links, slow screens, accessibility gaps and Google Play policy red-flags. <b>This is deep exploratory testing, not a check of your app's intended business logic</b> — a strong first line of defense, not a replacement for your own acceptance tests.</div></div>
+    <div class="method">Our engine installed your build on a clean Android device and worked through it systematically: it measured cold-start time, opened every screen it could reach, tapped every safe control, submitted forms both empty and filled, rotated the phone and sent the app to the background on each new screen, hammered it with seeded random input, and checked every screen against Google's accessibility rules. Every crash was replayed from a fresh install — only crashes that happen again, inside your app's own process, are reported. Purchase, payment, delete-account and sign-out controls are never tapped. <b>This is deep exploratory testing, not a check of your app's intended business logic</b> — a strong first line of defense, not a replacement for your own acceptance tests.</div></div>
   <div class="foot">Get It Listed · <a href="https://getitlisted.app">getitlisted.app</a> · automated QA engine</div>
 </div></body></html>'''
 
