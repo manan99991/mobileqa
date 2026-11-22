@@ -1,6 +1,6 @@
 # Get It Listed — automatic test scheduler.
 # Every 30 minutes: new customer uploads get tested, and each active paid app is
-# re-tested once a day for its 14 days. Only build ids pass through here.
+# re-tested once a day for its 14 days. Only build ids pass through here; no stored keys.
 name: Get It Listed — scheduler
 
 on:
@@ -13,17 +13,15 @@ concurrency: { group: gil-scheduler, cancel-in-progress: false }
 jobs:
   pick:
     runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
     outputs:
       ids: ${{ steps.p.outputs.ids }}
     steps:
       - uses: actions/checkout@v4
         with: { ref: getitlisted-engine }
       - id: p
-        env:
-          SB_SERVICE_KEY: ${{ secrets.SB_SERVICE_KEY }}
         run: |
-          if [ -z "$SB_SERVICE_KEY" ]; then echo "waiting for SB_SERVICE_KEY secret"; echo "ids=[]" >> $GITHUB_OUTPUT; exit 0; fi
-          ids=$(python3 getitlisted/queue.py pick 2>/dev/null) || { echo "queue not ready yet"; ids='[]'; }
+          ids=$(cd getitlisted && python3 queue.py pick 2>/dev/null) || { echo "engine-api not ready yet"; ids='[]'; }
           echo "ids=$ids" >> $GITHUB_OUTPUT
           echo "builds to test: $ids"
 
@@ -35,7 +33,7 @@ jobs:
       max-parallel: 4
       matrix:
         build_id: ${{ fromJSON(needs.pick.outputs.ids) }}
+    permissions: { contents: read, id-token: write }
     uses: manan99991/mobileqa/.github/workflows/getitlisted.yml@getitlisted-engine
     with:
       build_id: ${{ format('{0}', matrix.build_id) }}
-    secrets: inherit
