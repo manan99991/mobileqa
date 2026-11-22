@@ -348,11 +348,18 @@ class Agent:
                           f"--grant-read-uri-permission -p {self.pkg}", timeout=40)
         return self._landed(out, f"Share the sample {kind} “{name}” to the app from the phone's Share sheet")
 
+    def app_in_front(self) -> bool:
+        """Window focus can lag on a cold start; the resumed activity is the reliable answer."""
+        if self.ios:
+            return self.adb.top_package() == self.pkg
+        resumed = self.adb.sh("dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity|ResumedActivity:'")
+        return self.pkg in (resumed or "") or self.adb.top_package() == self.pkg
+
     def _landed(self, out: str, how: str) -> tuple[bool, str]:
         """Android said ok — but is the app really in front now? Report exactly what happened if not."""
-        for _ in range(5):
+        for _ in range(8):
             self.sleep(1.5)
-            if self.adb.top_package() == self.pkg:
+            if self.app_in_front():
                 return True, how
         said = " ".join((out or "").split())[:160]
         if os.environ.get("GIL_VERBOSE") == "1":
@@ -533,13 +540,13 @@ class Agent:
                 if self.adb.top_package() in PICKER_PKGS:
                     ok = pick_in_picker(self.adb, parse_ui(self.adb.dump(), ""), self.sleep, st.get("kind"))
                     self.sleep(2)
-                    if ok and self.adb.top_package() == self.pkg:
+                    if ok and self.app_in_front():
                         human.append(f'Pick a sample {st.get("kind", "file")} in the picker')
                         trail.append({"kind": "pick", "human": human[-1]})
                     else:
                         blocked.append(f'Could not pick a sample {st.get("kind", "file")} in the system picker')
                         human.append("(picker: no sample could be picked)")
-                        if self.adb.top_package() != self.pkg:
+                        if not self.app_in_front():
                             self.adb.back(); self.sleep(1)
                 else:
                     blocked.append("No file picker opened"); human.append("(no picker opened)")
