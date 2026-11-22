@@ -86,7 +86,7 @@ jobs:
           xcrun simctl io "$UDID" recordVideo --codec=h264 --force /tmp/vid/seg_0.mp4 > /dev/null 2>&1 & VPID=$!
           xcrun simctl spawn "$UDID" log stream --level debug --style compact --predicate "process == \"$EXE\"" > "$RUN_DIR/applog_ios.txt" 2>/dev/null & LPID=$!
           TEST_RUNNER_GIL_BUNDLE="$BUNDLE" TEST_RUNNER_GIL_OUT="$RUN_DIR" TEST_RUNNER_GIL_MINUTES="$MINUTES" TEST_RUNNER_GIL_ARGS="$GIL_ARGS" \
-            timeout $(( (MINUTES + 25) * 60 )) xcodebuild test-without-building -xctestrun "$XCR" -destination "id=$UDID" \
+            perl -e 'alarm shift; exec @ARGV' $(( (MINUTES + 25) * 60 )) xcodebuild test-without-building -xctestrun "$XCR" -destination "id=$UDID" \
             -only-testing:GILCrawler/GILCrawler/testExplore -test-timeouts-enabled NO -resultBundlePath "$RUNNER_TEMP/explore.xcresult" \
             > explore.log 2>&1
           echo "crawler exit $?"; grep -E "GIL crawl done|error:|Test Case .*(passed|failed)" explore.log | head -10
