@@ -37,3 +37,4 @@ jobs:
     uses: manan99991/mobileqa/.github/workflows/getitlisted.yml@getitlisted-engine
     with:
       build_id: ${{ format('{0}', matrix.build_id) }}
+    secrets: inherit
