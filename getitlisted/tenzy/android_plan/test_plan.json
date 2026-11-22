@@ -335,6 +335,11 @@
   "expected": "Tools that need a link are not offered for text without one.",
   "checks": [
    {
+    "oracle": "text_on_screen",
+    "arg": "Tidy pasted text",
+    "pre": true
+   },
+   {
     "oracle": "text_not_on_screen",
     "arg": "Link without the tracking"
    },
@@ -538,6 +543,11 @@
   ],
   "expected": "Only tools that take a video are listed.",
   "checks": [
+   {
+    "oracle": "text_on_screen",
+    "arg": "Video to a GIF",
+    "pre": true
+   },
    {
     "oracle": "text_not_on_screen",
     "arg": "Privacy share shield"

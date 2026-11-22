@@ -306,7 +306,7 @@ class Agent:
         if kind == "text" or text:
             out = self.adb.sh(f"am start -W -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "
                               f"{shlex.quote(text or '')} -p {self.pkg}", timeout=40)
-            return ("Error" not in out, f"Share this text to the app: “{text}”" if "Error" not in out else "The app did not accept shared text")
+            return self._landed(out, f"Share this text to the app: “{text}”")
         coll, name, mime = self.SHARE_SEED.get(kind, self.SHARE_SEED["image"])
         base = "content://media/external/file" if coll == "file" else f"content://media/external/{coll}/media"
         q = self.adb.sh(f"content query --uri {base} --projection _id --where \"_display_name='{name}'\"")
@@ -316,9 +316,20 @@ class Agent:
         uri = f"{base}/{m.group(1)}"
         out = self.adb.sh(f"am start -W -a android.intent.action.SEND -t {mime} --eu android.intent.extra.STREAM {uri} "
                           f"--grant-read-uri-permission -p {self.pkg}", timeout=40)
-        if "Error" in (out or ""):
-            return False, f"The app is not offered in the Share sheet for a {kind}"
-        return True, f"Share the sample {kind} “{name}” to the app from the phone's Share sheet"
+        return self._landed(out, f"Share the sample {kind} “{name}” to the app from the phone's Share sheet")
+
+    def _landed(self, out: str, how: str) -> tuple[bool, str]:
+        """Android said ok — but is the app really in front now? Report exactly what happened if not."""
+        for _ in range(5):
+            self.sleep(1.5)
+            if self.adb.top_package() == self.pkg:
+                return True, how
+        said = " ".join((out or "").split())[:160]
+        if os.environ.get("GIL_VERBOSE") == "1":
+            lg = self.adb.sh("logcat -d -v brief -t 400", timeout=40)
+            keep = [l for l in lg.splitlines() if re.search(r"ActivityTaskManager|ActivityManager|AndroidRuntime|" + re.escape(self.pkg), l)]
+            print("agent: share diagnostics ->", said, "\n  " + "\n  ".join(keep[-25:]))
+        return False, f"After sharing, the app was not on screen ({self.adb.top_package() or 'nothing'} was); Android said: {said}"
 
     def find_target(self, u: dict, target: str, near: str = "") -> dict | None:
         t = (target or "").strip().lower()
@@ -560,14 +571,18 @@ class Agent:
                 continue
             stt, ev = check(ck.get("oracle", ""), ck.get("arg", ""), facts, self.probe, self.seed, final_texts, changed)
             if stt != "na":
-                res["checks"].append({"oracle": ck.get("oracle"), "arg": ck.get("arg", ""), "status": stt, "evidence": ev})
+                res["checks"].append({"oracle": ck.get("oracle"), "arg": ck.get("arg", ""), "status": stt, "evidence": ev, "pre": bool(ck.get("pre"))})
         res.update({"steps_done": human, "blocked": blocked, "before": before_shot, "after": after_shot,
                     "facts": {k: v for k, v in facts.items() if v}, "crashed": crashed, "trail": trail,
                     "final_texts": final_texts[:60]})
         if crashed:
             res.update({"verdict": "fail", "actual": "The app crashed during this test.", "severity": "critical", "confidence": 1.0})
             return res
-        if blocked and len(blocked) >= max(1, len(c.get("steps", [])) // 2):
+        pre_fail = [x for x in res["checks"] if x.get("pre") and x["status"] != "pass"]
+        if pre_fail and not crashed:
+            blocked = blocked + ["The screen this test needs never appeared (" + pre_fail[0]["evidence"] + ")"]
+        res["checks"] = [x for x in res["checks"] if not x.get("pre")]
+        if blocked:   # the test did not run as written: it can neither pass nor fail (no fake bugs, no fake passes)
             res.update({"verdict": "blocked", "actual": "; ".join(blocked), "confidence": 1.0})
             return res
         j = brain.ask(SYS,
