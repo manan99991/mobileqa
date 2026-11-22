@@ -384,8 +384,12 @@ class Agent:
 
     def close_strays(self):
         """A picker or other app left open by the last test must not cover the next one."""
-        for p in PICKER_PKGS:
-            self.adb.sh(f"am force-stop {p}")
+        # press Back until it's gone; never force-stop system packages (the media provider is one of them)
+        for _ in range(4):
+            if self.front_package() in PICKER_PKGS:
+                self.adb.back(); self.sleep(1)
+            else:
+                break
 
     def _landed(self, out: str, how: str) -> tuple[bool, str]:
         """Android said ok — but is the app really in front now? Report exactly what happened if not."""
