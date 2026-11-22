@@ -4,7 +4,7 @@
 # Everything about the customer (app, package, links, login) is fetched inside the job
 # and masked, because logs of a public repo are public. Nothing is uploaded to GitHub.
 #
-# One repo secret is needed:  SB_SERVICE_KEY  (Supabase service-role key)
+# No stored keys: each run proves itself to the engine-api function with a GitHub OIDC token.
 
 name: Get It Listed — test an app
 
@@ -12,8 +12,6 @@ on:
   workflow_call:
     inputs:
       build_id: { type: string, required: true }
-    secrets:
-      SB_SERVICE_KEY: { required: true }
   workflow_dispatch:
     inputs:
       build_id: { description: "builds.id to test", required: true }
@@ -22,9 +20,11 @@ on:
     branches: [getitlisted-engine, main]
     paths: ["getitlisted/**", ".github/workflows/getitlisted.yml"]
 
+permissions:
+  contents: read
+  id-token: write
+
 env:
-  SB_URL: https://ljdedtgsijrettyrggpy.supabase.co
-  SB_SERVICE_KEY: ${{ secrets.SB_SERVICE_KEY }}
   BUILD_ID: ${{ inputs.build_id }}
 
 jobs:
@@ -41,7 +41,7 @@ jobs:
       - name: Load build (masked)
         run: |
           if [ -n "$BUILD_ID" ]; then
-            python getitlisted/queue.py fetch "$BUILD_ID"
+            cd getitlisted && python queue.py fetch "$BUILD_ID" && cd ..
             echo "GIL_SMOKE=0" >> $GITHUB_ENV
           else
             { echo "GIL_APK_URL=https://f-droid.org/repo/org.fossify.notes_13.apk"
@@ -134,4 +134,4 @@ jobs:
 
       - name: Mark build done
         if: always() && env.GIL_SMOKE == '0'
-        run: python getitlisted/queue.py finish "$BUILD_ID" ${{ job.status == 'success' && 'ok' || 'failed' }}
+        run: cd getitlisted && python queue.py finish "$BUILD_ID" ${{ job.status == 'success' && 'ok' || 'failed' }}

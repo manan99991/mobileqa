@@ -7,8 +7,7 @@ customer report to Supabase Storage, and inserts a row in the `reports` table so
 the report shows on the buyer's status page. Pure stdlib (urllib).
 
 Env:
-  SB_URL                 https://<ref>.supabase.co
-  SB_SERVICE_KEY         service-role key (GitHub secret; never public)
+  (auth: GitHub OIDC token through engine_api — no stored keys)
   GIL_APP_KEY            the client's app_key (matches getitlisted clients.app_key)
   GIL_APP_NAME           display name
   GIL_PLATFORM           Android | iOS   (default Android)
@@ -19,8 +18,7 @@ import json, mimetypes, os, sys, time, urllib.request, urllib.error
 from pathlib import Path
 import report  # local module
 
-SB_URL = os.environ["SB_URL"].rstrip("/")
-KEY = os.environ["SB_SERVICE_KEY"]
+from engine_api import call, put_file
 APP_KEY = os.environ["GIL_APP_KEY"]
 APP_NAME = os.environ.get("GIL_APP_NAME", APP_KEY)
 PLATFORM = os.environ.get("GIL_PLATFORM", "Android")
@@ -39,15 +37,14 @@ def _req(method, url, data=None, headers=None):
 
 
 def upload(path: Path, dest: str) -> str:
-    """Upload a file to Storage, return its public URL."""
+    """Upload a file to the public reports bucket via a one-time signed link; return its URL."""
     ctype = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
-    url = f"{SB_URL}/storage/v1/object/{BUCKET}/{dest}"
-    status, body = _req("POST", url, data=path.read_bytes(), headers={
-        "apikey": KEY, "Authorization": f"Bearer {KEY}",
-        "Content-Type": ctype, "x-upsert": "true"})
-    if status not in (200, 201):
-        print(f"  ! upload {dest} -> {status} {body[:120]!r}", file=sys.stderr)
-    return f"{SB_URL}/storage/v1/object/public/{BUCKET}/{dest}"
+    d = call("sign_upload", path=dest)
+    try:
+        put_file(d["url"], path.read_bytes(), ctype)
+    except Exception as ex:
+        print(f"  ! upload failed: {ex}", file=sys.stderr)
+    return d["public_url"]
 
 
 def main():
@@ -80,7 +77,8 @@ def main():
     if (RUN_DIR / "logcat.txt").exists():
         log_url = upload(RUN_DIR / "logcat.txt", f"{APP_KEY}/{RUN_ID}/logcat.txt")
     video_urls = []
-    vids = sorted(list((RUN_DIR / "video").glob("*.mp4")) if (RUN_DIR / "video").exists() else [])
+    vdir = Path(os.environ.get("GIL_VIDEO_DIR") or RUN_DIR / "video")
+    vids = sorted(vdir.glob("*.mp4")) if vdir.exists() else []
     for v in vids[:4]:
         video_urls.append(upload(v, f"{APP_KEY}/{RUN_ID}/{v.name}"))
     print(f"uploaded {len(video_urls)} video segment(s), log: {'yes' if log_url else 'no'}")
@@ -103,12 +101,7 @@ def main():
         "medium": sev.count("medium"), "low": sev.count("low"),
         "issues": len(data["findings"]), "report_url": report_url, "status": "ready",
     }
-    status, body = _req("POST", f"{SB_URL}/rest/v1/reports", data=json.dumps(row).encode(),
-                        headers={"apikey": KEY, "Authorization": f"Bearer {KEY}",
-                                 "Content-Type": "application/json", "Prefer": "return=minimal"})
-    if status not in (200, 201, 204):
-        print(f"! insert reports row -> {status} {body[:200]!r}", file=sys.stderr)
-        sys.exit(1)
+    call("report", row=row)
     print(f"published report for {APP_KEY}: score {row['score']}, {row['issues']} issues -> {report_url}")
 
 

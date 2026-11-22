@@ -9,7 +9,7 @@ Get It Listed — test queue (Supabase-backed, stdlib only).
                      masked so it never shows in the (public) Actions log.
   finish <id> <ok|failed>
 
-Env: SB_URL (default project URL), SB_SERVICE_KEY.
+Auth: GitHub OIDC token via engine_api (no stored keys). due() mirrors engine-api.ts.
 """
 from __future__ import annotations
 import datetime as dt, json, os, re, sys, urllib.parse, urllib.request, urllib.error
@@ -64,39 +64,23 @@ def due(builds, clients, t):
     return [i for _, i in sorted(out)][:MAX_PER_PICK]
 
 
-def pick():
-    builds = req("GET", "/rest/v1/builds?select=id,app_key,status,last_run_at,created_at&order=created_at.desc&limit=500")
-    clients = req("GET", "/rest/v1/clients?select=app_key,status,tier,start_date")
-    ids = due(builds, clients, now())
-    for i in ids:
-        req("PATCH", f"/rest/v1/builds?id=eq.{i}", {"status": "running", "last_run_at": now().isoformat()},
-            {"Prefer": "return=minimal"})
-    print(json.dumps(ids))
-
-
-def signed(path, secs=4 * 3600):
-    r = req("POST", f"/storage/v1/object/sign/builds/{urllib.parse.quote(path)}", {"expiresIn": secs})
-    return SB + "/storage/v1" + r["signedURL"]
-
-
 def forbidden_from_notes(notes: str) -> str:
     words = re.findall(r"\b(?:skip|avoid|don'?t (?:tap|touch|open))\s+(?:the\s+)?([A-Za-z][A-Za-z ]{1,30}?)(?:\s+(?:screen|button|page|tab))?(?=[.,;!\n]|$)",
                        notes or "", re.I)
     return ",".join(w.strip().lower() for w in words if w.strip())
 
 
+def pick():
+    from engine_api import call
+    print(json.dumps(call("pick").get("ids", [])))
+
+
 def fetch(i):
-    b = req("GET", f"/rest/v1/builds?id=eq.{int(i)}&select=*")[0]
-    c = req("GET", f"/rest/v1/clients?app_key=eq.{urllib.parse.quote(b['app_key'])}&select=app_name")
-    vals = {
-        "GIL_APK_URL": signed(b["apk_path"]),
-        "GIL_MAPPING_URL": signed(b["mapping_path"]) if b.get("mapping_path") else "",
-        "GIL_APP_KEY": b["app_key"],
-        "GIL_APP_NAME": (c[0]["app_name"] if c else b["app_key"]),
-        "GIL_LOGIN_EMAIL": b.get("login_email") or "",
-        "GIL_LOGIN_PASSWORD": b.get("login_password") or "",
-        "GIL_FORBIDDEN": forbidden_from_notes(b.get("notes") or ""),
-    }
+    from engine_api import call
+    d = call("fetch", id=int(i))
+    vals = {"GIL_APK_URL": d["apk_url"], "GIL_MAPPING_URL": d.get("mapping_url", ""), "GIL_APP_KEY": d["app_key"],
+            "GIL_APP_NAME": d["app_name"], "GIL_LOGIN_EMAIL": d.get("login_email", ""),
+            "GIL_LOGIN_PASSWORD": d.get("login_password", ""), "GIL_FORBIDDEN": d.get("forbidden", "")}
     for v in vals.values():
         if v:
             print(f"::add-mask::{v}")
@@ -107,13 +91,8 @@ def fetch(i):
 
 
 def finish(i, result):
-    req("PATCH", f"/rest/v1/builds?id=eq.{int(i)}",
-        {"status": "done" if result == "ok" else "failed", "last_run_at": now().isoformat()},
-        {"Prefer": "return=minimal"})
-    # bump run counter (best effort)
-    b = req("GET", f"/rest/v1/builds?id=eq.{int(i)}&select=runs")
-    if b:
-        req("PATCH", f"/rest/v1/builds?id=eq.{int(i)}", {"runs": (b[0]["runs"] or 0) + 1}, {"Prefer": "return=minimal"})
+    from engine_api import call
+    call("finish", id=int(i), ok=(result == "ok"))
 
 
 def _selftest():
