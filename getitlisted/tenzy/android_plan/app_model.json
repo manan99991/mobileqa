@@ -1,0 +1,151 @@
+{
+ "app_summary": "Tenzy is a personal-assistant toolbox: ready-made tools (templates) and user-built tools that turn photos, videos, PDFs, sound and text into useful results on the phone, then save or share them.",
+ "features": [
+  {
+   "id": "F1",
+   "name": "Privacy share shield",
+   "purpose": "Hides sensitive details, strips the photo's location and shrinks it to 2 MB before sharing",
+   "entry_screen": "launch",
+   "expected_result": "Hides sensitive details, strips the photo's location and shrinks it to 2 MB before sharing",
+   "output_kind": "image",
+   "risk": "high"
+  },
+  {
+   "id": "F2",
+   "name": "ID copy with a safety watermark",
+   "purpose": "Stamps 'For verification only' on an ID photo and removes its location",
+   "entry_screen": "launch",
+   "expected_result": "Stamps 'For verification only' on an ID photo and removes its location",
+   "output_kind": "image",
+   "risk": "high"
+  },
+  {
+   "id": "F3",
+   "name": "Photo to PDF",
+   "purpose": "Turns a photo into a PDF document",
+   "entry_screen": "launch",
+   "expected_result": "Turns a photo into a PDF document",
+   "output_kind": "pdf",
+   "risk": "high"
+  },
+  {
+   "id": "F4",
+   "name": "Text or link to QR code",
+   "purpose": "Makes a QR code image from text or a link",
+   "entry_screen": "launch",
+   "expected_result": "Makes a QR code image from text or a link",
+   "output_kind": "image",
+   "risk": "high"
+  },
+  {
+   "id": "F5",
+   "name": "Pull links, emails and phones",
+   "purpose": "Finds the links, email addresses and phone numbers in a block of text",
+   "entry_screen": "launch",
+   "expected_result": "Finds the links, email addresses and phone numbers in a block of text",
+   "output_kind": "text",
+   "risk": "high"
+  },
+  {
+   "id": "F6",
+   "name": "Link without the tracking",
+   "purpose": "Removes tracking parameters (utm_*, fbclid) from a link",
+   "entry_screen": "launch",
+   "expected_result": "Removes tracking parameters (utm_*, fbclid) from a link",
+   "output_kind": "text",
+   "risk": "high"
+  },
+  {
+   "id": "F7",
+   "name": "Video without its sound",
+   "purpose": "Removes the audio track from a video",
+   "entry_screen": "launch",
+   "expected_result": "Removes the audio track from a video",
+   "output_kind": "video",
+   "risk": "high"
+  },
+  {
+   "id": "F8",
+   "name": "Grab a still from a video",
+   "purpose": "Saves one frame of a video as a photo",
+   "entry_screen": "launch",
+   "expected_result": "Saves one frame of a video as a photo",
+   "output_kind": "image",
+   "risk": "high"
+  },
+  {
+   "id": "F9",
+   "name": "Video under 25 MB for email",
+   "purpose": "Shrinks a video under 25 MB and opens email",
+   "entry_screen": "launch",
+   "expected_result": "Shrinks a video under 25 MB and opens email",
+   "output_kind": "video",
+   "risk": "high"
+  },
+  {
+   "id": "F10",
+   "name": "Video to a GIF",
+   "purpose": "Turns a video into an animated GIF",
+   "entry_screen": "launch",
+   "expected_result": "Turns a video into an animated GIF",
+   "output_kind": "gif",
+   "risk": "high"
+  },
+  {
+   "id": "F11",
+   "name": "Just the first page of a PDF",
+   "purpose": "Keeps only page 1 of a PDF",
+   "entry_screen": "launch",
+   "expected_result": "Keeps only page 1 of a PDF",
+   "output_kind": "pdf",
+   "risk": "high"
+  },
+  {
+   "id": "F12",
+   "name": "PDF under 5 MB for email",
+   "purpose": "Shrinks a PDF under 5 MB and opens email",
+   "entry_screen": "launch",
+   "expected_result": "Shrinks a PDF under 5 MB and opens email",
+   "output_kind": "pdf",
+   "risk": "high"
+  },
+  {
+   "id": "F13",
+   "name": "Chipmunk voice",
+   "purpose": "Changes a voice recording to a chipmunk voice",
+   "entry_screen": "launch",
+   "expected_result": "Changes a voice recording to a chipmunk voice",
+   "output_kind": "audio",
+   "risk": "high"
+  },
+  {
+   "id": "F14",
+   "name": "Text to an audio file",
+   "purpose": "Reads text aloud into an audio file",
+   "entry_screen": "launch",
+   "expected_result": "Reads text aloud into an audio file",
+   "output_kind": "audio",
+   "risk": "high"
+  },
+  {
+   "id": "F15",
+   "name": "Photo to a pencil sketch",
+   "purpose": "Turns a photo into a pencil sketch",
+   "entry_screen": "launch",
+   "expected_result": "Turns a photo into a pencil sketch",
+   "output_kind": "image",
+   "risk": "high"
+  },
+  {
+   "id": "F16",
+   "name": "Long text to 3 sentences",
+   "purpose": "Summarises long text into three sentences",
+   "entry_screen": "launch",
+   "expected_result": "Summarises long text into three sentences",
+   "output_kind": "text",
+   "risk": "high"
+  }
+ ],
+ "screens_studied": 0,
+ "written_by": "Claude, from Tenzy's source code (Chain.kt, BuilderScreen.kt, HomeScreen.kt)"
+}

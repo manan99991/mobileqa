@@ -21,6 +21,7 @@ jobs:
       source_apk: "android/app/build/outputs/apk/debug/*.apk"
       app_key: tenzy-android
       app_name: Tenzy
-      minutes: "25"
-      agent_minutes: "50"
+      minutes: "20"
+      agent_minutes: "55"
+      plan_dir: getitlisted/tenzy/android_plan
     secrets: inherit

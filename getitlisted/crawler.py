@@ -152,6 +152,12 @@ class Adb:
         return int(m.group(1)) if m else None
 
     def clear_data(self, pkg: str): self.sh(f"pm clear {pkg}", timeout=60)
+    def restart(self, pkg: str):
+        self.sh(f"am force-stop {pkg}"); self.launch(pkg)
+    def scroll(self, direction: str = "down"):
+        self.sh("input swipe 540 1700 540 700 300" if direction == "down" else "input swipe 540 700 540 1700 300")
+    def pick(self, kind: str = "image") -> bool:
+        return pick_in_picker(self, parse_ui(self.dump(), ""), time.sleep, kind)
     def pids(self, pkg: str) -> list[str]: return self.sh(f"pidof {pkg}").split()
     def density(self) -> float:
         m = re.search(r"(\d+)\s*$", self.sh("wm density").strip().splitlines()[-1] if self.sh("wm density").strip() else "")
@@ -749,7 +755,12 @@ def find_el(ui: dict, sel: dict, pkg: str) -> dict | None:
     return None
 
 
-def pick_in_picker(adb, ui: dict, sleep) -> bool:
+PICK_PREFER = {"image": re.compile(r"^IMG_|\.jpe?g$", re.I), "video": re.compile(r"^VID_|\.mp4$", re.I),
+               "audio": re.compile(r"voice memo|song|\.m4a$|\.mp3$", re.I), "document": re.compile(r"\.pdf$|invoice", re.I),
+               "pdf": re.compile(r"\.pdf$|invoice", re.I)}
+
+
+def pick_in_picker(adb, ui: dict, sleep, kind: str | None = None) -> bool:
     """In a system file/photo/contact picker: open a sensible folder if needed, pick the first
     item, then confirm (multi-select pickers). Same logic in crawl and replay, so picks are reproducible."""
     picked = False
@@ -764,7 +775,9 @@ def pick_in_picker(adb, ui: dict, sleep) -> bool:
         if picked and ok:
             tgt = ok[0]
         elif items and not picked:
-            tgt = sorted(items, key=lambda e: (e["cy"], e["cx"]))[0]; picked = True
+            pref = PICK_PREFER.get(kind or "")
+            named = [e for e in els if pref and pref.search((e.get("text") or e.get("desc") or "").strip())] if pref else []
+            tgt = sorted(named or items, key=lambda e: (e["cy"], e["cx"]))[0]; picked = True
         elif roots and not picked:
             tgt = roots[0]
         elif ok:

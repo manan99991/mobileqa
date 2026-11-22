@@ -21,6 +21,7 @@ on:
       app_name: { type: string, required: false, default: "" }
       minutes:  { type: string, required: false, default: "" }
       agent_minutes: { type: string, required: false, default: "" }
+      plan_dir: { type: string, required: false, default: "" }
       seed:     { type: boolean, required: false, default: true }
   workflow_dispatch:
     inputs:
@@ -38,6 +39,7 @@ env:
   BUILD_ID: ${{ inputs.build_id }}
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   GIL_AGENT_MINUTES: ${{ inputs.agent_minutes || '40' }}
+  GIL_PLAN_DIR: ${{ inputs.plan_dir }}
   GIL_VERBOSE: ${{ inputs.source_repo != '' && '1' || '0' }}
 
 jobs:
@@ -151,8 +153,9 @@ jobs:
           RUN_DIR=$(ls -dt reports/*/ 2>/dev/null | head -1)
           [ -z "$RUN_DIR" ] && { echo "::error::no run output"; exit 1; }
           echo "== deep functional testing (learn -> plan -> run -> verify -> confirm) =="
-          if [ -n "$GEMINI_API_KEY" ]; then
+          if [ -n "$GEMINI_API_KEY" ] || [ -n "$GIL_PLAN_DIR" ]; then
             pip install -q pillow >/dev/null 2>&1
+            [ -n "$GEMINI_API_KEY" ] && echo "brain: Gemini" || echo "brain: none (running the written test plan with device checks only)"
             timeout --signal=TERM $(( ${GIL_AGENT_MINUTES:-40} + 15 ))m python getitlisted/agent.py "$RUN_DIR"
             echo "agent exit $?"
           else

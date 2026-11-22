@@ -55,7 +55,7 @@ def replay(run: Path, app: Path, bundle: str, udid: str, xctestrun: str, times: 
     findings = json.loads((run / "findings.json").read_text()) if (run / "findings.json").exists() else []
     out = []
     for n, f in enumerate(findings):
-        if f.get("category") != "crash" or not f.get("replay"):
+        if f.get("category") != "crash" or not f.get("replay") or f.get("test_case"):
             continue
         trail = run / f"trail_{n}.json"
         trail.write_text(json.dumps(f["replay"]))
@@ -133,6 +133,9 @@ def trust(run: Path, app: Path, since: float):
         if f.get("category") == "crash":
             r = reg.get(f["title"], {})
             n, of = r.get("reproduced", 0), r.get("of", 0)
+            if f.get("test_case") and f.get("reproduction") in ("confirmed", "intermittent"):
+                # found by the functional agent, which already re-ran the test case
+                n, of = (2, 2) if f["reproduction"] == "confirmed" else (1, 2)
             is_freeze = "froze" in f.get("title", "")
             if n == 0 or (not is_freeze and not reports):
                 dropped += 1

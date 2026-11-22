@@ -34,7 +34,7 @@ SYS = ("You are a senior mobile QA engineer. You test apps the way a careful hum
        "Reply with JSON only.")
 
 ORACLES = ["new_file", "output_smaller_than_input", "exif_gps_removed", "share_sheet_opened", "other_app_opened",
-           "calendar_event_added", "contacts_changed", "alarm_set", "notification_posted", "text_on_screen",
+           "calendar_event_added", "contacts_changed", "alarm_set", "notification_posted", "text_on_screen", "text_not_on_screen",
            "no_app_error_logged", "screen_changed"]
 
 
@@ -71,7 +71,15 @@ class Probe:
             files.append({"path": f, "bytes": int(sz) if sz.isdigit() else None,
                           "ext": f.rsplit(".", 1)[-1].lower() if "." in f else ""})
         # app-private outputs for debuggable builds
-        priv = self.adb.sh(f"run-as {self.pkg} find files cache -newer /dev/null -mmin -3 -type f 2>/dev/null | head -20").split()
+        mins = int((time.time() - before["t"]) // 60) + 2
+        priv = []
+        for line in self.adb.sh(f"run-as {self.pkg} find files cache -type f -mmin -{mins} -exec stat -c '%s %n' {{}} + 2>/dev/null | head -30",
+                                timeout=60).splitlines():
+            parts = line.strip().split(" ", 1)
+            if len(parts) == 2 and parts[0].isdigit() and not re.search(r"(\.(xml|json|db|prof|tmp|lock)|-journal|-wal|-shm)$|/(code_cache|WebView|image_manager)", parts[1]):
+                files.append({"path": "app:" + parts[1], "bytes": int(parts[0]),
+                              "ext": parts[1].rsplit(".", 1)[-1].lower() if "." in parts[1] else ""})
+                priv.append(parts[1])
         facts["new_files"] = files
         facts["new_private_files"] = priv[:20]
         after = self.snap_counts()
@@ -105,7 +113,10 @@ class Probe:
         try:
             from PIL import Image
             loc = Path(tempfile.mkdtemp()) / "o.jpg"
-            subprocess.run(["adb", "pull", path, str(loc)], capture_output=True, timeout=60)
+            if path.startswith("app:"):
+                loc.write_bytes(self.adb.exec_out(f"run-as {self.pkg} cat {path[4:]}", timeout=60))
+            else:
+                subprocess.run(["adb", "pull", path, str(loc)], capture_output=True, timeout=60)
             ex = Image.open(loc).getexif()
             return bool(dict(ex.get_ifd(0x8825)))
         except Exception:
@@ -115,7 +126,7 @@ class Probe:
 def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_texts: list, screen_changed: bool):
     """Deterministic verdict for one expected outcome: (status, evidence) with status pass|fail|na."""
     files = facts.get("new_files") or []
-    kinds = {"image": ("jpg", "jpeg", "png", "webp", "heic"), "video": ("mp4", "mov", "3gp", "webm"),
+    kinds = {"image": ("jpg", "jpeg", "png", "webp", "heic", "gif"), "gif": ("gif",), "video": ("mp4", "mov", "3gp", "webm"),
              "audio": ("m4a", "mp3", "wav", "aac", "ogg"), "pdf": ("pdf",), "document": ("pdf", "txt", "csv", "docx", "xlsx", "vcf", "zip")}
     if oracle == "new_file":
         want = kinds.get((arg or "").lower())
@@ -172,6 +183,11 @@ def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_te
             return "na", ""
         blob = " ".join(final_texts).lower()
         return ("pass", f"Screen shows “{arg}”") if arg.lower() in blob else ("fail", f"Screen does not show “{arg}”")
+    if oracle == "text_not_on_screen":
+        if not arg:
+            return "na", ""
+        blob = " ".join(final_texts).lower()
+        return ("fail", f"Screen still shows \u201c{arg}\u201d") if arg.lower() in blob else ("pass", f"\u201c{arg}\u201d is gone from the result")
     if oracle == "no_app_error_logged":
         errs = facts.get("app_errors") or []
         return ("fail", "App logged: " + errs[-1][-160:]) if errs else ("pass", "No errors logged by the app")
@@ -187,7 +203,13 @@ class Agent:
         self.summary = json.loads((run / "summary.json").read_text())["summary"]
         self.screens = [s for s in self.summary.get("screen_list") or [] if s.get("ui") is not None]
         self.by_name = {s["name"]: s for s in self.screens}
-        self.probe = Probe(self.adb, pkg)
+        self.ios = self.adb.__class__.__name__ == "IOSDevice"
+        self.platform = "iPhone" if self.ios else "Android"
+        if self.ios:
+            from ios_device import IOSProbe
+            self.probe = IOSProbe(self.adb, pkg)
+        else:
+            self.probe = Probe(self.adb, pkg)
         seedf = Path(os.environ.get("GIL_SEED_MANIFEST", "seed_manifest.json"))
         self.seed = json.loads(seedf.read_text()) if seedf.exists() else {"files": []}
         (run / "agent").mkdir(exist_ok=True)
@@ -212,6 +234,8 @@ class Agent:
         return u
 
     def answer_dialogs(self, u: dict) -> bool:
+        if self.ios:
+            return any(e["pkg"] == "com.apple.springboard" for e in u["elements"]) and self.adb.answer_alert()
         for e in u["elements"]:
             if e["pkg"] in PERMISSION_PKGS and ALLOW_RE.match(e.get("text", "")):
                 self.adb.tap(e["cx"], e["cy"]); self.sleep(1); return True
@@ -219,8 +243,7 @@ class Agent:
 
     def go_to(self, screen: dict) -> list[str]:
         """Fresh launch, then replay the recorded taps to reach the screen."""
-        self.adb.sh(f"am force-stop {self.pkg}")
-        self.adb.launch(self.pkg); self.sleep(3)
+        self.adb.restart(self.pkg); self.sleep(3)
         human = ["Open the app"]
         for st in screen.get("reach") or []:
             u = self.ui()
@@ -230,7 +253,14 @@ class Agent:
                 self.adb.back(); self.sleep(1); human.append("Press Back"); continue
             if st["kind"] == "pick":
                 pick_in_picker(self.adb, u, self.sleep); human.append(st.get("human", "Pick a file")); continue
-            el = find_el(u, st.get("el") or {}, self.pkg)
+            sel = st.get("el") or {}
+            if "label" in sel and "text" not in sel:      # iOS trail entries carry label + pixel bounds
+                b = sel.get("bounds") or [0, 0, 0, 0]
+                sel = {"rid": sel.get("rid"), "text": sel.get("label"), "desc": sel.get("label"),
+                       "cx": (b[0] + b[2]) // 2, "cy": (b[1] + b[3]) // 2}
+            el = find_el(u, sel, self.pkg)
+            if not el and self.ios and sel.get("cx"):
+                el = {"cx": sel["cx"], "cy": sel["cy"], "text": sel.get("text") or "", "cls": "", "rid": "", "desc": ""}
             if not el:
                 continue                     # e.g. onboarding no longer shown
             self.adb.tap(el["cx"], el["cy"]); self.sleep(0.6)
@@ -240,11 +270,21 @@ class Agent:
             self.sleep(1.0)
         return human
 
-    def find_target(self, u: dict, target: str) -> dict | None:
+    def find_target(self, u: dict, target: str, near: str = "") -> dict | None:
         t = (target or "").strip().lower()
         if not t:
             return None
         els = [e for e in u["elements"] if e["pkg"] == self.pkg]
+        if near:
+            nl = near.strip().lower()
+            anchors = [(y + h / 2) for tx, y, h, *_ in (u.get("texts") or []) if nl in tx.lower()]
+            if not anchors:
+                return None
+            ay = anchors[0]
+            cands = [e for e in els if t == (e.get("text") or e.get("desc") or "").strip().lower()
+                     or t in (e.get("text") or e.get("desc") or "").strip().lower()]
+            cands = [e for e in cands if abs(e["cy"] - ay) < 220]
+            return min(cands, key=lambda e: abs(e["cy"] - ay)) if cands else None
         for test in (lambda l: l == t, lambda l: l.startswith(t), lambda l: t in l, lambda l: l and l in t):
             for e in els:
                 lab = " ".join([e.get("text") or "", e.get("desc") or "", e.get("hint") or "", (e.get("rid") or "").replace("_", " ")]).strip().lower()
@@ -275,7 +315,7 @@ class Agent:
         for s in picks:
             ctr = ", ".join(sorted({c["label"] for c in s["ui"] if c["label"]})[:40])
             txt = " | ".join((s.get("texts") or [])[:40])
-            r = brain.ask(SYS, f"Screen “{s['name']}” of an Android app.\nVisible text: {txt}\nControls: {ctr}\n"
+            r = brain.ask(SYS, f"Screen “{s['name']}” of an {self.platform} app.\nVisible text: {txt}\nControls: {ctr}\n"
                                "Describe what a user can DO here. JSON: {\"purpose\":\"...\",\"features\":[{\"name\":\"...\","
                                "\"what_it_does\":\"...\",\"inputs\":[\"...\"],\"controls\":[\"exact control labels used\"],"
                                "\"expected_output\":\"what should happen / be produced\",\"output_kind\":\"file|share|text|calendar|"
@@ -308,10 +348,10 @@ class Agent:
                 s = self.by_name[f["entry_screen"]]
                 ctx.append({"feature": f, "controls_on_entry_screen": sorted({c["label"] for c in s["ui"] if c["label"]})[:50]})
             r = brain.ask(SYS,
-                "Write functional test cases for these features of an Android app. The phone already holds: "
-                "6 camera photos WITH GPS location, 4 screenshots, 2 short videos (8 s and 5 s), a voice memo, an MP3, "
-                "Invoice_1042.pdf, Notes.txt, Expenses.csv, a .vcf and a .zip in Downloads, and 6 contacts "
-                "(one email-only, one with no phone, a duplicate pair).\n"
+                f"Write functional test cases for these features of an {self.platform} app. The phone already holds: "
+                + (os.environ.get("GIL_SEED_DESC") or "6 camera photos WITH GPS location, 4 screenshots, 2 short videos (8 s and 5 s), "
+                   "a voice memo, an MP3, Invoice_1042.pdf, Notes.txt, Expenses.csv, a .vcf and a .zip in Downloads, and 6 contacts "
+                   "(one email-only, one with no phone, a duplicate pair).") + "\n"
                 "For each feature write 2-4 cases mixing: happy path, edge case, negative/invalid input, boundary, state "
                 "(rotate/background mid-task). Steps must use EXACT control labels from controls_on_entry_screen when "
                 "starting; later steps may name controls that will appear. Never include buying, paying, deleting accounts "
@@ -326,7 +366,7 @@ class Agent:
                 '{"do":"pick","kind":"image"}],"expected":"what a correct app does","checks":[{"oracle":"new_file","arg":"image"}]}]}',
                 None, "plan")
             for c in (r or {}).get("cases", []):
-                if c.get("entry_screen") in self.by_name and c.get("steps"):
+                if (c.get("entry_screen") in self.by_name or c.get("entry_screen") == "launch") and c.get("steps"):
                     c["id"] = f"TC{len(cases) + 1:02d}"
                     cases.append(c)
         cache.write_text(json.dumps(cases, indent=1))
@@ -336,7 +376,7 @@ class Agent:
     def run_case(self, c: dict, prefer_judge: int = 0) -> dict:
         res = {"id": c["id"], "title": c.get("title"), "feature_id": c.get("feature_id"), "type": c.get("type"),
                "expected": c.get("expected"), "entry_screen": c.get("entry_screen"), "steps_done": [], "checks": []}
-        screen = self.by_name[c["entry_screen"]]
+        screen = self.by_name.get(c["entry_screen"]) or {"name": "Home", "reach": []}
         human = self.go_to(screen)
         u0 = self.ui()
         before_shot = self.shot(f"{c['id']}_before")
@@ -350,13 +390,16 @@ class Agent:
             if self.answer_dialogs(u):
                 u = self.ui()
             if do in ("tap", "type"):
-                el = self.find_target(u, st.get("target", ""))
-                for _ in range(2):
+                near = st.get("near", "")
+                el = self.find_target(u, st.get("target", ""), near)
+                for _ in range(14 if near else (0 if st.get("optional") else 2)):
                     if el:
                         break
-                    self.adb.sh("input swipe 540 1700 540 700 300"); self.sleep(1); u = self.ui()
-                    el = self.find_target(u, st.get("target", ""))
-                if not el:
+                    self.adb.scroll("down"); self.sleep(1); u = self.ui()
+                    el = self.find_target(u, st.get("target", ""), near)
+                if not el and st.get("optional"):
+                    continue
+                if not el and not near:
                     el = self.ai_pick(u, f'{do} "{st.get("target")}"' + (f' and type "{st.get("text")}"' if do == "type" else ""),
                                       self.shot(f"{c['id']}_find"))
                 if not el or is_forbidden(el):
@@ -371,10 +414,16 @@ class Agent:
                     human.append(f'Tap “{el_label(el)}”')
                     trail.append({"kind": "tap", "human": human[-1], "el": _sel(el)})
                 self.sleep(1.2)
+            elif do == "pick" and self.ios:
+                self.sleep(1.5)
+                if self.adb.pick(st.get("kind", "image")):
+                    human.append(f'Pick a sample {st.get("kind", "file")}'); trail.append({"kind": "pick", "human": human[-1]})
+                else:
+                    blocked.append("No picker item could be chosen"); human.append("(no picker item found)")
             elif do == "pick":
                 self.sleep(1.5)
                 if self.adb.top_package() in PICKER_PKGS:
-                    pick_in_picker(self.adb, parse_ui(self.adb.dump(), ""), self.sleep)
+                    pick_in_picker(self.adb, parse_ui(self.adb.dump(), ""), self.sleep, st.get("kind"))
                     human.append(f'Pick a sample {st.get("kind", "file")} in the picker')
                     trail.append({"kind": "pick", "human": human[-1]})
                 else:
@@ -384,7 +433,7 @@ class Agent:
             elif do == "wait":
                 self.sleep(min(20, float(st.get("seconds") or 3))); human.append(f'Wait {st.get("seconds", 3)} s')
             elif do == "scroll":
-                self.adb.sh("input swipe 540 1700 540 700 300" if st.get("dir", "down") == "down" else "input swipe 540 700 540 1700 300")
+                self.adb.scroll(st.get("dir", "down"))
                 human.append(f'Scroll {st.get("dir", "down")}'); self.sleep(1)
             elif do == "rotate":
                 self.adb.rotate(True); self.sleep(1.5); self.adb.rotate(False); self.sleep(1.5)
@@ -396,7 +445,9 @@ class Agent:
                 break
             # bring the app back if a share sheet / other app opened, so later steps run in the app
             top = self.adb.top_package()
-            if top and top != self.pkg and top not in PICKER_PKGS and top not in PERMISSION_PKGS:
+            if self.ios and top != self.pkg:
+                self.sleep(1.5); self.adb.back(); self.sleep(1.2)
+            elif top and top != self.pkg and top not in PICKER_PKGS and top not in PERMISSION_PKGS:
                 self.sleep(1.5); self.adb.back(); self.sleep(1.2)
         # let long work finish (exports, compression), then read the result
         self.sleep(3)
@@ -431,8 +482,22 @@ class Agent:
             '"evidence":"the specific thing you see that proves it","severity":"critical|high|medium|low","confidence":0.0,'
             '"likely_cause":"if failed: the most likely cause, one sentence","fix":"if failed: what the developer should change, one sentence"}',
             [brain.image_part(before_shot), brain.image_part(after_shot)], "judge", prefer=prefer_judge) or {}
-        hard_fail = [x for x in res["checks"] if x["status"] == "fail"]
+        hard_fail = [x for x in res["checks"] if x["status"] == "fail" and x["oracle"] != "no_app_error_logged"]
         hard_pass = [x for x in res["checks"] if x["status"] == "pass"]
+        only_logged = not hard_fail and any(x["status"] == "fail" for x in res["checks"])
+        if not j and only_logged:
+            res.update({"verdict": "review", "severity": "low", "confidence": 0.5,
+                        "actual": "The feature ran, but the app logged an error while doing it: " +
+                                  next(x["evidence"] for x in res["checks"] if x["status"] == "fail"), "judge_evidence": ""})
+            return res
+        if not j:
+            # no AI judge available: only objective device checks decide; anything else is for a human
+            final = "fail" if hard_fail else ("pass" if hard_pass else ("review" if blocked else "inconclusive"))
+            res.update({"verdict": final, "severity": c.get("severity") or "medium", "confidence": 1.0 if hard_fail or hard_pass else 0.0,
+                        "actual": "; ".join(x["evidence"] for x in hard_fail) if hard_fail else
+                                  ("; ".join(x["evidence"] for x in hard_pass) if hard_pass else "No objective check applied."),
+                        "judge_evidence": ""})
+            return res
         verdict = j.get("verdict", "inconclusive")
         conf = float(j.get("confidence") or 0)
         if hard_fail and verdict == "fail":
@@ -455,9 +520,15 @@ class Agent:
     # ── main
     def run_all(self, minutes: float):
         t0 = time.time()
-        if not brain.available():
-            (self.run / "test_results.json").write_text(json.dumps({"skipped": "no AI key configured", "results": []}))
-            print("agent: no AI key — deep functional testing skipped"); return
+        plan_dir = os.environ.get("GIL_PLAN_DIR")
+        if plan_dir and Path(plan_dir, "test_plan.json").exists():
+            # a human/Claude-written plan: copy it in so learn/plan are skipped
+            for f in ("app_model.json", "test_plan.json"):
+                if Path(plan_dir, f).exists():
+                    (self.run / f).write_text(Path(plan_dir, f).read_text())
+        if not brain.available() and not (self.run / "test_plan.json").exists():
+            (self.run / "test_results.json").write_text(json.dumps({"skipped": "no AI key configured and no written test plan", "results": []}))
+            print("agent: no AI key and no plan — deep functional testing skipped"); return
         model = self.learn()
         print(f"agent: learned {len(model.get('features', []))} features from {model.get('screens_studied', 0)} screens")
         cases = self.plan(model)
@@ -470,7 +541,11 @@ class Agent:
                 continue
             try:
                 r = self.run_case(c)
-                if r["verdict"] == "fail" and not r.get("crashed"):
+                if r.get("crashed"):
+                    r2 = self.run_case(c)                          # crashes must happen again too
+                    r["confirm"] = {"verdict": "fail" if r2.get("crashed") else r2["verdict"], "actual": r2.get("actual")}
+                    r["crash_ratio"] = "2/2" if r2.get("crashed") else "1/2"
+                elif r["verdict"] == "fail":
                     r2 = self.run_case(c, prefer_judge=1)          # confirm with a fresh run + second opinion
                     r["confirm"] = {"verdict": r2["verdict"], "actual": r2.get("actual")}
                     if r2["verdict"] != "fail":
@@ -507,8 +582,9 @@ class Agent:
                 "checks": r.get("checks"), "judge_evidence": r.get("judge_evidence"),
                 "fix_text": " ".join(x for x in [("Likely cause: " + r["likely_cause"]) if r.get("likely_cause") else "",
                                                  r.get("fix") or ""] if x),
-                "reproduction": "confirmed" if (r.get("confirm") or {}).get("verdict") == "fail" else "",
-                "reproduction_ratio": "2/2" if (r.get("confirm") or {}).get("verdict") == "fail" else "",
+                "reproduction": ("confirmed" if (r.get("confirm") or {}).get("verdict") == "fail" else
+                                 "intermittent" if crashed else ""),
+                "reproduction_ratio": r.get("crash_ratio") or ("2/2" if (r.get("confirm") or {}).get("verdict") == "fail" else ""),
                 "evidence": {"screenshot": r.get("before"), "after_screenshot": r.get("after"), "t": time.time(),
                              "activity": r.get("entry_screen"),
                              "log": "\n".join((r.get("facts") or {}).get("app_errors") or [])},
@@ -519,4 +595,13 @@ class Agent:
 
 if __name__ == "__main__":
     run = Path(sys.argv[1])
-    Agent(run, os.environ["GIL_PACKAGE"]).run_all(float(os.environ.get("GIL_AGENT_MINUTES") or 45))
+    if (os.environ.get("GIL_PLATFORM") or "").lower() == "ios":
+        from ios_device import IOSDevice
+        dev = IOSDevice(os.environ["GIL_CMD_DIR"], os.environ["BUNDLE"], os.environ["UDID"], os.environ["EXE"],
+                        str(run / "applog_ios.txt"))
+        try:
+            Agent(run, os.environ["BUNDLE"], adb=dev).run_all(float(os.environ.get("GIL_AGENT_MINUTES") or 45))
+        finally:
+            dev.quit()
+    else:
+        Agent(run, os.environ["GIL_PACKAGE"]).run_all(float(os.environ.get("GIL_AGENT_MINUTES") or 45))

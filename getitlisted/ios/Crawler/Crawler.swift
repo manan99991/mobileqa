@@ -176,6 +176,102 @@ final class GILCrawler: XCTestCase {
         return title
     }
 
+    func staticTexts() -> [String] {
+        guard let snap = try? app.snapshot() else { return [] }
+        var out: [String] = []
+        func walk(_ s: XCUIElementSnapshot) {
+            if s.elementType == .keyboard { return }
+            if s.elementType == .staticText, !s.label.isEmpty, out.count < 80 { out.append(s.label) }
+            for c in s.children { walk(c) }
+        }
+        walk(snap)
+        return out
+    }
+
+    // MARK: remote-control server (lets the shared Python agent drive the app)
+
+    func xmlEscape(_ s: String) -> String {
+        s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "\"", with: "&quot;")
+         .replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;")
+    }
+
+    /// The screen as Android-style hierarchy XML (bounds in screenshot pixels), so one parser serves both platforms.
+    func dumpXML() -> String {
+        var out = "<?xml version='1.0'?><hierarchy>"
+        let bundle = env["GIL_BUNDLE"] ?? ""
+        func walk(_ s: XCUIElementSnapshot, _ pkg: String) {
+            if s.elementType == .keyboard { return }
+            let f = s.frame
+            if f.width > 1, f.height > 1 {
+                let clickable = INTERACTIVE.contains(s.elementType) && s.isEnabled
+                let cls = (s.elementType == .textField || s.elementType == .searchField) ? "EditText" :
+                          (s.elementType == .secureTextField ? "EditText" : (s.elementType == .textView ? "EditText" : typeName(s.elementType)))
+                let label = s.label.isEmpty ? ((s.value as? String) ?? "") : s.label
+                let isText = s.elementType == .staticText
+                out += "<node package=\"\(pkg)\" class=\"\(cls)\" resource-id=\"\(xmlEscape(s.identifier))\" "
+                out += "text=\"\(xmlEscape(isText || EDITABLE.contains(s.elementType) ? label : (clickable ? label : "")))\" "
+                out += "content-desc=\"\(xmlEscape(clickable ? s.label : ""))\" hint=\"\(xmlEscape(s.placeholderValue ?? ""))\" "
+                out += "clickable=\"\(clickable)\" enabled=\"\(s.isEnabled)\" password=\"\(s.elementType == .secureTextField)\" "
+                out += "checkable=\"\(s.elementType == .switch || s.elementType == .toggle)\" "
+                out += "bounds=\"[\(Int(f.minX * scale)),\(Int(f.minY * scale))][\(Int(f.maxX * scale)),\(Int(f.maxY * scale))]\" />"
+            }
+            for c in s.children { walk(c, pkg) }
+        }
+        if let snap = try? app.snapshot() { walk(snap, bundle) }
+        if springboard.alerts.count > 0, let sb = try? springboard.alerts.firstMatch.snapshot() { walk(sb, "com.apple.springboard") }
+        return out + "</hierarchy>"
+    }
+
+    func testServe() {
+        guard let dir = env["GIL_CMD_DIR"] else { return }
+        let d = URL(fileURLWithPath: dir)
+        _ = shot("serve_probe")          // sets scale
+        if app.state != .runningForeground { app.activate() }
+        var n = 0
+        let start = Date()
+        while Date().timeIntervalSince(start) < 3 * 3600 {
+            let cmdURL = d.appendingPathComponent("cmd_\(n).json")
+            guard let data = try? Data(contentsOf: cmdURL),
+                  let cmd = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { usleep(150_000); continue }
+            var resp: [String: Any] = ["ok": true]
+            let op = cmd["op"] as? String ?? ""
+            let px = { (k: String) -> CGFloat in CGFloat((cmd[k] as? Double) ?? Double(cmd[k] as? Int ?? 0)) / self.scale }
+            switch op {
+            case "dump": resp["xml"] = dumpXML()
+            case "tap": tapPoint(CGPoint(x: px("x"), y: px("y")))
+            case "type":
+                if app.keyboards.count > 0 { app.typeText(cmd["text"] as? String ?? "") } else { resp["ok"] = false }
+            case "clear":
+                if app.keyboards.count > 0 {
+                    let del = String(repeating: XCUIKeyboardKey.delete.rawValue, count: (cmd["n"] as? Int) ?? 40)
+                    app.typeText(del)
+                }
+            case "hide_keyboard":
+                if app.keyboards.count > 0 {
+                    if let d = app.keyboards.firstMatch.buttons.allElementsBoundByIndex.first(where: { ["return", "done", "go", "search", "next", "send"].contains($0.label.lowercased()) }) { d.tap() }
+                }
+            case "back": resp["did"] = goBack(snapshotEls() ?? [])
+            case "home": XCUIDevice.shared.press(.home)
+            case "launch": if app.state == .runningForeground { } else { app.activate() }
+            case "relaunch": app.terminate(); app.launch()
+            case "terminate": app.terminate()
+            case "rotate": XCUIDevice.shared.orientation = (cmd["landscape"] as? Bool ?? false) ? .landscapeLeft : .portrait
+            case "swipe":
+                let dir = cmd["dir"] as? String ?? "up"
+                if dir == "up" { app.swipeUp() } else if dir == "down" { app.swipeDown() } else if dir == "left" { app.swipeLeft() } else { app.swipeRight() }
+            case "screenshot":
+                let s = XCUIScreen.main.screenshot(); try? s.pngRepresentation.write(to: URL(fileURLWithPath: cmd["path"] as? String ?? "/tmp/x.png"))
+            case "state": resp["state"] = app.state.rawValue
+            case "alert": resp["handled"] = handleSystemAlerts()
+            case "quit": writeJSON(resp, d.appendingPathComponent("resp_\(n).json")); return
+            default: resp["ok"] = false
+            }
+            resp["state"] = resp["state"] ?? app.state.rawValue
+            writeJSON(resp, d.appendingPathComponent("resp_\(n).json"))
+            n += 1
+        }
+    }
+
     func signature(_ els: [El], _ title: String) -> String {
         let parts = Set(els.filter { $0.type != .cell }.map { "\($0.type.rawValue):\($0.id.isEmpty ? String($0.label.prefix(24)) : $0.id)" })
         return stableHash(title + "|" + parts.sorted().joined(separator: "|"))
@@ -401,7 +497,12 @@ final class GILCrawler: XCTestCase {
             if screens[sig] == nil {
                 let name = title.isEmpty ? "Screen \(screens.count + 1)" : title
                 let p = shot("s\(String(format: "%02d", screens.count))")
-                screens[sig] = ["name": name, "activity": name, "shot": p, "controls": els.count, "t": Date().timeIntervalSince1970]
+                let lastLaunch = history.lastIndex(where: { ($0["kind"] as? String) == "launch" }) ?? -1
+                let reach = Array(history[(lastLaunch + 1)...]).filter { ["tap", "type", "swipe"].contains($0["kind"] as? String ?? "") }
+                let uiList: [[String: Any]] = els.prefix(60).map { (e: El) -> [String: Any] in
+                    var l = loc(e); l["editable"] = e.editable; return l }
+                screens[sig] = ["name": name, "activity": name, "shot": p, "controls": els.count, "t": Date().timeIntervalSince1970,
+                                "ui": uiList, "texts": staticTexts(), "reach": reach, "scale": Double(scale)]
                 screenOrder.append(sig)
                 curScreen = name; curShot = p
                 a11y(els, sig: sig, name: name, shotPath: p)
@@ -431,10 +532,10 @@ final class GILCrawler: XCTestCase {
                     if let d = done { d.tap() }
                 }
                 act("type", "Type \"\(e.type == .secureTextField ? "\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}" : v)\" into \"\(e.text)\"",
-                    ["key": e.key, "x": e.center.x, "y": e.center.y, "value": v])
+                    ["key": e.key, "x": e.center.x, "y": e.center.y, "value": v, "el": loc(e)])
             } else {
                 tapPoint(e.center)
-                act("tap", "Tap \"\(e.text)\"", ["key": e.key, "x": e.center.x, "y": e.center.y])
+                act("tap", "Tap \"\(e.text)\"", ["key": e.key, "x": e.center.x, "y": e.center.y, "el": loc(e)])
             }
             sleep(1)
             checkFailure(after: path.last ?? "")

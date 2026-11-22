@@ -1,0 +1,949 @@
+[
+ {
+  "id": "TC01",
+  "feature_id": "F1",
+  "title": "Shield a GPS-tagged photo before sharing",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Privacy share shield"
+   },
+   {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "pick",
+    "kind": "image"
+   },
+   {
+    "do": "wait",
+    "seconds": 8
+   },
+   {
+    "do": "tap",
+    "target": "Save or share"
+   }
+  ],
+  "expected": "A new photo is produced with no GPS location, and Save or share opens the share sheet.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "exif_gps_removed"
+   },
+   {
+    "oracle": "share_sheet_opened"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC02",
+  "feature_id": "F1",
+  "title": "Cancel the photo picker on Privacy share shield",
+  "type": "negative",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Privacy share shield"
+   },
+   {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "back"
+   },
+   {
+    "do": "wait",
+    "seconds": 2
+   }
+  ],
+  "expected": "Backing out of the picker leaves the tool ready, with no crash or error.",
+  "checks": [
+   {
+    "oracle": "no_app_error_logged"
+   },
+   {
+    "oracle": "text_on_screen",
+    "arg": "Choose photos"
+   }
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "TC03",
+  "feature_id": "F1",
+  "title": "Rotate the phone while the shield runs",
+  "type": "state",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Privacy share shield"
+   },
+   {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "pick",
+    "kind": "image"
+   },
+   {
+    "do": "rotate"
+   },
+   {
+    "do": "wait",
+    "seconds": 8
+   }
+  ],
+  "expected": "Rotating mid-task still produces the cleaned photo.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "exif_gps_removed"
+   }
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "TC04",
+  "feature_id": "F2",
+  "title": "Watermark an ID photo",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "ID copy with a safety watermark"
+   },
+   {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "pick",
+    "kind": "image"
+   },
+   {
+    "do": "wait",
+    "seconds": 8
+   }
+  ],
+  "expected": "A new watermarked photo is produced without GPS location.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "exif_gps_removed"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC05",
+  "feature_id": "F3",
+  "title": "Turn a photo into a PDF",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Photo to PDF"
+   },
+   {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "pick",
+    "kind": "image"
+   },
+   {
+    "do": "wait",
+    "seconds": 8
+   }
+  ],
+  "expected": "A PDF file is produced.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "pdf"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC06",
+  "feature_id": "F4",
+  "title": "Make a QR code from a link",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Text or link to QR code"
+   },
+   {
+    "do": "type",
+    "target": "Your text",
+    "text": "https://getitlisted.app"
+   },
+   {
+    "do": "tap",
+    "target": "Run"
+   },
+   {
+    "do": "wait",
+    "seconds": 6
+   }
+  ],
+  "expected": "A QR code image is produced.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC07",
+  "feature_id": "F4",
+  "title": "QR code from an empty text",
+  "type": "negative",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Text or link to QR code"
+   },
+   {
+    "do": "tap",
+    "target": "Run"
+   },
+   {
+    "do": "wait",
+    "seconds": 2
+   }
+  ],
+  "expected": "With no text the tool does not run and nothing breaks.",
+  "checks": [
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "low"
+ },
+ {
+  "id": "TC08",
+  "feature_id": "F5",
+  "title": "Pull contact details out of a message",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Pull links, emails and phones"
+   },
+   {
+    "do": "type",
+    "target": "Your text",
+    "text": "Call Alex at 312-555-0101 or email alex.rivera@example.com, details at https://example.com/plan"
+   },
+   {
+    "do": "tap",
+    "target": "Run"
+   },
+   {
+    "do": "wait",
+    "seconds": 6
+   }
+  ],
+  "expected": "The result lists the phone number, email and link.",
+  "checks": [
+   {
+    "oracle": "text_on_screen",
+    "arg": "alex.rivera@example.com"
+   },
+   {
+    "oracle": "text_on_screen",
+    "arg": "example.com/plan"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC09",
+  "feature_id": "F6",
+  "title": "Strip tracking from a link",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Link without the tracking"
+   },
+   {
+    "do": "type",
+    "target": "Your text",
+    "text": "https://shop.example.com/item/42?utm_source=newsletter&utm_medium=email&fbclid=abc123&color=blue"
+   },
+   {
+    "do": "tap",
+    "target": "Run"
+   },
+   {
+    "do": "wait",
+    "seconds": 6
+   }
+  ],
+  "expected": "The cleaned link keeps the page and 'color=blue' but drops utm_ and fbclid.",
+  "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "utm_source"
+   },
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "fbclid"
+   },
+   {
+    "oracle": "text_on_screen",
+    "arg": "shop.example.com/item/42"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC10",
+  "feature_id": "F7",
+  "title": "Remove the sound from a video",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Video without its sound"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a video"
+   },
+   {
+    "do": "pick",
+    "kind": "video"
+   },
+   {
+    "do": "wait",
+    "seconds": 25
+   }
+  ],
+  "expected": "A new silent video is produced and the screen says it is ready.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "video"
+   },
+   {
+    "oracle": "text_on_screen",
+    "arg": "Your video is ready"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC11",
+  "feature_id": "F8",
+  "title": "Grab a still frame from a video",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Grab a still from a video"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a video"
+   },
+   {
+    "do": "pick",
+    "kind": "video"
+   },
+   {
+    "do": "wait",
+    "seconds": 25
+   }
+  ],
+  "expected": "A photo of a frame is produced.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC12",
+  "feature_id": "F9",
+  "title": "Shrink a video for email",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Video under 25 MB for email"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a video"
+   },
+   {
+    "do": "pick",
+    "kind": "video"
+   },
+   {
+    "do": "wait",
+    "seconds": 25
+   }
+  ],
+  "expected": "A video under 25 MB is produced and email is offered.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "video"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC13",
+  "feature_id": "F9",
+  "title": "Background the app while a video shrinks",
+  "type": "state",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Video under 25 MB for email"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a video"
+   },
+   {
+    "do": "pick",
+    "kind": "video"
+   },
+   {
+    "do": "background"
+   },
+   {
+    "do": "wait",
+    "seconds": 25
+   }
+  ],
+  "expected": "Leaving and returning mid-task still finishes the video.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "video"
+   }
+  ],
+  "severity": "medium"
+ },
+ {
+  "id": "TC14",
+  "feature_id": "F10",
+  "title": "Turn a video into a GIF",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Video to a GIF"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a video"
+   },
+   {
+    "do": "pick",
+    "kind": "video"
+   },
+   {
+    "do": "wait",
+    "seconds": 25
+   }
+  ],
+  "expected": "An animated GIF is produced.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "gif"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC15",
+  "feature_id": "F11",
+  "title": "Keep only page 1 of a PDF",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Just the first page of a PDF"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a PDF"
+   },
+   {
+    "do": "pick",
+    "kind": "pdf"
+   },
+   {
+    "do": "wait",
+    "seconds": 8
+   }
+  ],
+  "expected": "A new one-page PDF is produced.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "pdf"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC16",
+  "feature_id": "F12",
+  "title": "Shrink a PDF for email",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "PDF under 5 MB for email"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a PDF"
+   },
+   {
+    "do": "pick",
+    "kind": "pdf"
+   },
+   {
+    "do": "wait",
+    "seconds": 8
+   }
+  ],
+  "expected": "A PDF under 5 MB is produced.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "pdf"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC17",
+  "feature_id": "F13",
+  "title": "Chipmunk voice on a voice memo",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Chipmunk voice"
+   },
+   {
+    "do": "tap",
+    "target": "Choose a recording"
+   },
+   {
+    "do": "pick",
+    "kind": "audio"
+   },
+   {
+    "do": "wait",
+    "seconds": 15
+   }
+  ],
+  "expected": "A changed audio file is produced.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "audio"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC18",
+  "feature_id": "F14",
+  "title": "Read text into an audio file",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Text to an audio file"
+   },
+   {
+    "do": "type",
+    "target": "Your text",
+    "text": "Your appointment is tomorrow at 3 pm."
+   },
+   {
+    "do": "tap",
+    "target": "Run"
+   },
+   {
+    "do": "wait",
+    "seconds": 6
+   }
+  ],
+  "expected": "An audio file is produced.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "audio"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC19",
+  "feature_id": "F15",
+  "title": "Photo to a pencil sketch",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Photo to a pencil sketch"
+   },
+   {
+    "do": "tap",
+    "target": "Choose photos"
+   },
+   {
+    "do": "pick",
+    "kind": "image"
+   },
+   {
+    "do": "wait",
+    "seconds": 8
+   }
+  ],
+  "expected": "A sketch image is produced.",
+  "checks": [
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC20",
+  "feature_id": "F16",
+  "title": "Summarise a long paragraph",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "tap",
+    "target": "Build your own tool",
+    "optional": true
+   },
+   {
+    "do": "tap",
+    "target": "Templates"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Long text to 3 sentences"
+   },
+   {
+    "do": "type",
+    "target": "Your text",
+    "text": "Tenzy helps people get everyday jobs done on their phone. It can shrink videos for email, strip location from photos, turn receipts into expense rows, and remind you before a return window closes. Everything runs on the phone, so nothing is uploaded. Users can also build their own tools by snapping steps together or by describing what they want in plain words. The app aims to be the one place people go when a phone task feels fiddly."
+   },
+   {
+    "do": "tap",
+    "target": "Run"
+   },
+   {
+    "do": "wait",
+    "seconds": 6
+   }
+  ],
+  "expected": "A shorter summary is shown.",
+  "checks": [
+   {
+    "oracle": "screen_changed"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "medium"
+ }
+]
