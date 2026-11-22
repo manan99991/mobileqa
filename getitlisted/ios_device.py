@@ -172,6 +172,9 @@ class IOSProbe:
         if self.dev.applog and Path(self.dev.applog).exists():
             for line in Path(self.dev.applog).read_text(errors="ignore").splitlines()[-4000:]:
                 m = re.match(r"^(\S+ \S+)\s+(E|F)\s", line)
+                # Apple's own frameworks and the XCTest runner write here too; only the app's own errors count
+                if m and (re.search(r"\[com\.apple\.", line) or re.search(r"AXAutomationType|Automation type mismatch", line)):
+                    continue
                 if m:
                     try:
                         ts = time.mktime(time.strptime(m.group(1)[:19], "%Y-%m-%d %H:%M:%S"))

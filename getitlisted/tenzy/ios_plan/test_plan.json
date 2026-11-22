@@ -14,15 +14,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "keep-share",
-    "seconds": 60
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "keep-share"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -57,15 +66,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "idcopy-result",
-    "seconds": 60
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "idcopy-result"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -96,15 +114,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "keep-share",
-    "seconds": 60
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "keep-share"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -135,15 +162,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "pdf-search-check",
-    "seconds": 90
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "pdf-search-check"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -170,15 +206,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "code-tested",
-    "seconds": 40
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "code-tested"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "element_present",
@@ -210,15 +255,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "code-tested",
-    "seconds": 40
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "code-tested"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "element_present",
@@ -246,15 +300,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "scam-verdict",
-    "seconds": 40
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "scam-verdict"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "text_on_screen",
@@ -281,15 +344,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "link-finish",
-    "seconds": 40
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "link-finish"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "text_not_on_screen",
@@ -316,15 +388,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "text-finish",
-    "seconds": 40
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "text-finish"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "no_app_error_logged"
@@ -347,15 +428,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "text-finish",
-    "seconds": 60
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "text-finish"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "no_app_error_logged"
@@ -378,15 +468,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "video-size-check",
-    "seconds": 150
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "video-size-check"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "element_present",
@@ -422,15 +521,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "video-size-check",
-    "seconds": 150
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "video-size-check"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "element_present",
@@ -462,15 +570,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "video-finish",
-    "seconds": 150
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "video-finish"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -501,15 +618,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "still-finish",
-    "seconds": 90
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "still-finish"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -536,15 +662,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "gif-finish",
-    "seconds": 150
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "gif-finish"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -571,15 +706,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "video-speed-check",
-    "seconds": 150
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "video-speed-check"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "element_present",
@@ -611,15 +755,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "video-speed-check",
-    "seconds": 150
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "video-speed-check"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "element_present",
@@ -651,15 +804,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "pdf-size-check",
-    "seconds": 90
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "pdf-size-check"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -686,15 +848,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "pdf-size-check",
-    "seconds": 90
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "pdf-size-check"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -725,15 +896,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "listen-finish",
-    "seconds": 90
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "listen-finish"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -760,15 +940,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "voice-finish",
-    "seconds": 90
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "voice-finish"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -795,15 +984,24 @@
   "steps": [
    {
     "do": "wait_for",
-    "target": "keep-share",
-    "seconds": 60
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "The tool finishes on its result screen and the output passes every check.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "keep-share"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -833,15 +1031,24 @@
    },
    {
     "do": "wait_for",
-    "target": "keep-share",
-    "seconds": 60
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "Rotation mid-task still finishes with a clean photo.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "keep-share"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "new_file",
@@ -875,15 +1082,24 @@
    },
    {
     "do": "wait_for",
-    "target": "video-size-check",
-    "seconds": 150
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "Leaving and returning mid-task still finishes the video.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "video-size-check"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "element_present",
@@ -914,15 +1130,24 @@
    },
    {
     "do": "wait_for",
-    "target": "video-finish",
-    "seconds": 150
+    "target": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf|run-message",
+    "seconds": 150,
+    "busy": "run-busy-note"
    }
   ],
   "expected": "Rotation mid-task still produces a silent video.",
   "checks": [
    {
     "oracle": "element_present",
-    "arg": "video-finish"
+    "arg": "run-result|run-steplog|idcopy-result|pdf-size-check|video-speed-check|video-size-check|passport-score|text-finish|gif-finish|still-finish|video-finish|listen-finish|link-finish|code-finish|voice-finish|keep-share|keep-saved|scam-verdict|code-tested|finish-join-pdf",
+    "why_pass": "The tool finished and showed its result screen",
+    "why_fail": "The tool never reached a result screen (still working or blank after 150 s)"
+   },
+   {
+    "oracle": "element_present",
+    "arg": "run-message",
+    "absent": true,
+    "why_pass": "No stop or error message from the tool"
    },
    {
     "oracle": "video_silent",

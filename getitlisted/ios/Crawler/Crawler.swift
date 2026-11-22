@@ -209,7 +209,7 @@ final class GILCrawler: XCTestCase {
                 let label = s.label.isEmpty ? ((s.value as? String) ?? "") : s.label
                 let isText = s.elementType == .staticText
                 out += "<node package=\"\(pkg)\" class=\"\(cls)\" resource-id=\"\(xmlEscape(s.identifier))\" "
-                out += "text=\"\(xmlEscape(isText || EDITABLE.contains(s.elementType) ? label : (clickable ? label : "")))\" "
+                out += "text=\"\(xmlEscape(isText || EDITABLE.contains(s.elementType) || !s.identifier.isEmpty ? label : (clickable ? label : "")))\" "
                 out += "content-desc=\"\(xmlEscape(clickable ? s.label : ""))\" hint=\"\(xmlEscape(s.placeholderValue ?? ""))\" "
                 out += "clickable=\"\(clickable)\" enabled=\"\(s.isEnabled)\" password=\"\(s.elementType == .secureTextField)\" "
                 out += "checkable=\"\(s.elementType == .switch || s.elementType == .toggle)\" "

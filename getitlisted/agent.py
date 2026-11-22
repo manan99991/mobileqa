@@ -497,11 +497,13 @@ class Agent:
                     blocked.append("No file picker opened"); human.append("(no picker opened)")
             elif do == "wait_for":
                 want, end, seen = st.get("target", ""), time.time() + min(180, float(st.get("seconds") or 60)), False
+                ids, busy = [w for w in want.split("|") if w], st.get("busy", "")
                 while time.time() < end:
-                    if f'resource-id="{want}"' in self.adb.dump():
+                    xml = self.adb.dump()
+                    if any(f'resource-id="{w}"' in xml for w in ids) and not (busy and f'resource-id="{busy}"' in xml):
                         seen = True; break
                     self.sleep(2)
-                human.append(f"Wait for the result ({want})" + ("" if seen else " \u2014 never appeared"))
+                human.append("Wait for the result screen" + ("" if seen else " \u2014 it never appeared"))
                 if not seen:
                     self.timeouts.append(want)
             elif do == "back":
@@ -536,14 +538,25 @@ class Agent:
         changed = [el_key(e) for e in u0["elements"]] != [el_key(e) for e in u1["elements"]]
         for ck in c.get("checks") or []:
             if ck.get("oracle") == "element_present":
-                ok = f'resource-id="{ck.get("arg")}"' in self.last_xml
+                alts = [x for x in (ck.get("arg") or "").split("|") if x]
+                hit = next((x for x in alts if f'resource-id="{x}"' in self.last_xml), None)
+                ok = hit is not None
                 lab = ck.get("contains")
                 if ok and lab:
-                    m = re.search(r'resource-id="' + re.escape(ck["arg"]) + r'"[^>]*', self.last_xml)
+                    m = re.search(r'resource-id="' + re.escape(hit) + r'"[^>]*', self.last_xml)
                     ok = bool(m and lab.lower() in m.group(0).lower())
+                said = ""
+                if hit:
+                    m2 = re.search(r'resource-id="' + re.escape(hit) + r'"[^>]*', self.last_xml)
+                    lab2 = re.search(r'(?:text|content-desc|label)="([^"]{1,200})"', m2.group(0)) if m2 else None
+                    said = lab2.group(1) if lab2 else ""
+                if ck.get("absent"):
+                    ok = not ok
+                    if not ok:
+                        ck = dict(ck, why_fail=f"The tool stopped and showed: \u201c{said or hit}\u201d")
                 res["checks"].append({"oracle": "element_present", "arg": ck.get("arg"), "status": "pass" if ok else "fail",
-                                      "evidence": (f"Finish screen shows \u201c{ck.get('arg')}\u201d" + (f" containing \u201c{lab}\u201d" if lab else ""))
-                                      if ok else (f"\u201c{ck.get('arg')}\u201d" + (f" with \u201c{lab}\u201d" if lab else "") + " never appeared")})
+                                      "evidence": ck.get("why_pass") or ck.get("why") or (f"Finish screen shows \u201c{hit}\u201d" + (f" containing \u201c{lab}\u201d" if lab else ""))
+                                      if ok else (ck.get("why_fail") or (f"The result screen never appeared" if len(alts) > 1 else f"\u201c{ck.get('arg')}\u201d" + (f" with \u201c{lab}\u201d" if lab else "") + " never appeared"))})
                 continue
             stt, ev = check(ck.get("oracle", ""), ck.get("arg", ""), facts, self.probe, self.seed, final_texts, changed)
             if stt != "na":
