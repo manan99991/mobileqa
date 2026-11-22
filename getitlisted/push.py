@@ -90,7 +90,9 @@ def main():
     html = report.build(data)
     rpt_path = RUN_DIR / "qa_report.html"
     rpt_path.write_text(html, encoding="utf-8")
-    report_url = upload(rpt_path, f"{APP_KEY}/{RUN_ID}/qa_report.html")
+    upload(rpt_path, f"{APP_KEY}/{RUN_ID}/qa_report.html")
+    # Supabase serves .html as plain text, so customers open it through our viewer page
+    report_url = f"https://getitlisted.app/report/?r={APP_KEY}/{RUN_ID}"
 
     # 3) counts + score, then insert the reports row
     sev = [f.get("severity") for f in findings]
