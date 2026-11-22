@@ -12,7 +12,7 @@ on:
 
 jobs:
   ios:
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 150
     permissions: { contents: read, id-token: write }
     env:
@@ -43,6 +43,7 @@ jobs:
             -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/tdd" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO -skipPackagePluginValidation -skipMacroValidation \
             2>&1 | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log || { grep -E "error:" build.log | head -30; exit 1; }
           APP=$(find "$RUNNER_TEMP/tdd" -path "*Debug-iphonesimulator/*.app" -maxdepth 5 -name "HandyTools.app" | head -1)
           [ -n "$APP" ] || { tail -60 build.log; exit 1; }
           echo "APP=$APP" >> $GITHUB_ENV
@@ -68,7 +69,8 @@ jobs:
           UDID=$(xcrun simctl create GIL "$DT" "$RT")
           xcrun simctl boot "$UDID"; xcrun simctl bootstatus "$UDID" -b >/dev/null
           echo "UDID=$UDID" >> $GITHUB_ENV
-          xcrun simctl install "$UDID" "$APP"
+          for t in 1 2 3; do xcrun simctl install "$UDID" "$APP" && break; sleep 20; done
+          for p in all camera microphone photos location speech-recognition; do xcrun simctl privacy "$UDID" grant $p "$BUNDLE" 2>/dev/null || true; done
           xcrun simctl privacy "$UDID" grant all "$BUNDLE" || true
           mkdir -p "$RUNNER_TEMP/media"
           python3 -c "import sys;sys.path.insert(0,'getitlisted');import seed_device as s;from pathlib import Path;[s.jpeg_with_gps(Path('$RUNNER_TEMP/media/IMG_%d.jpg'%i),i) for i in range(6)]" || true
