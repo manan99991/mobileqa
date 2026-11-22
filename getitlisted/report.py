@@ -228,10 +228,17 @@ def from_run(run_dir, app_name, platform, url_map=None):
     device, app = rd("device.json"), rd("app.json")
 
     findings = []
+    seen = set()
     for idx, f in enumerate(raw):
         if f.get("severity") == "info":
             continue
         ev = f.get("evidence") or {}
+        # the same issue on the same screen and the same controls is one bug, not two
+        dk = (f.get("title"), ev.get("activity") or f.get("screen_name"),
+              tuple(sorted((e.get("rid") or e.get("label") or "") for e in (ev.get("elements") or []))))
+        if f.get("category") != "crash" and dk in seen:
+            continue
+        seen.add(dk)
         shot = ev.get("screenshot", "")
         stack = ev.get("stack") or ""
         if isinstance(stack, list):
