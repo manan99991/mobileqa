@@ -57,8 +57,15 @@ e = lambda s: html.escape(str(s if s is not None else ""))
 
 
 def readiness(findings):
+    # crashes and functional bugs count in full; repeated accessibility / performance notes are capped
+    # so one recurring style issue across many screens can't sink the score on its own
     w = {"critical": 25, "high": 10, "medium": 4, "low": 1, "info": 0}
-    penalty = sum(w.get(f.get("severity", "low"), 1) for f in findings)
+    caps = {"a11y": 15, "perf": 8, "stability": 8}
+    by = {}
+    for f in findings:
+        c = f.get("category", "")
+        by[c] = by.get(c, 0) + w.get(f.get("severity", "low"), 1)
+    penalty = sum(min(v, caps[c]) if c in caps else v for c, v in by.items())
     return max(0, 100 - penalty)
 
 
@@ -360,8 +367,10 @@ def build(data):
         catc[CATEGORY.get(f["category"], f["category"].title())] = catc.get(CATEGORY.get(f["category"], f["category"].title()), 0) + 1
     cat_chart = hbars(sorted(catc.items(), key=lambda kv: -kv[1])) if catc else '<p class="muted">No issues to chart.</p>'
     cs = perf.get("cold_start_ms") or []
-    cs_chart = hbars([(f"Run {i + 1}", round(t / 1000, 1)) for i, t in enumerate(cs)], " s", 5.0,
-                     "Android vitals limit: 5 s") if cs else '<p class="muted">Not measured.</p>'
+    cs_chart = (hbars([(f"Run {i + 1}", round(t / 1000, 1)) for i, t in enumerate(cs)], " s")
+                + '<p class="muted" style="margin-top:6px">Approximate: includes the test framework waiting for the app to settle.</p>'
+                if ios else hbars([(f"Run {i + 1}", round(t / 1000, 1)) for i, t in enumerate(cs)], " s", 5.0,
+                                  "Android vitals limit: 5 s")) if cs else '<p class="muted">Not measured.</p>'
     mem = ""
     if perf.get("mem_start_kb") and perf.get("mem_end_kb"):
         a, b = perf["mem_start_kb"] // 1024, perf["mem_end_kb"] // 1024
@@ -371,7 +380,7 @@ def build(data):
       <div class="charts">
         <div class="chart"><h3>Issues by severity</h3>{sev_chart}</div>
         <div class="chart"><h3>Issues by type</h3>{cat_chart}</div>
-        <div class="chart"><h3>Cold start time</h3>{cs_chart}</div>
+        <div class="chart"><h3>{"Launch time" if ios else "Cold start time"}</h3>{cs_chart}</div>
         <div class="chart"><h3>Memory use</h3>{mem or '<p class="muted">Not measured.</p>'}</div>
       </div></section>'''
 
@@ -469,7 +478,7 @@ def build(data):
 
     # ── performance & stability
     prow = []
-    if cs: prow.append(("Cold start (3 runs)", " · ".join(f"{t / 1000:.1f} s" for t in cs)))
+    if cs: prow.append(("Cold start (3 runs)" + (" \u2014 approximate, includes test-runner overhead" if ios else ""), " · ".join(f"{t / 1000:.1f} s" for t in cs)))
     if perf.get("mem_start_kb"): prow.append(("Memory", f'{perf["mem_start_kb"] // 1024} MB at launch → {(perf.get("mem_end_kb") or 0) // 1024} MB after the session'))
     for r in perf.get("stress") or []:
         prow.append((f'Stress seed {r.get("seed")}', f'{(r.get("events") or 0):,} random events — ' + ("crashed" if r.get("crash") else "froze" if r.get("anr") else "survived")))

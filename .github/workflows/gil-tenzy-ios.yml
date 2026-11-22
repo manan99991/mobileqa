@@ -82,15 +82,19 @@ jobs:
           RUN_DIR="$PWD/reports/gil-ios-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$RUN_DIR" /tmp/vid
           echo "RUN_DIR=$RUN_DIR" >> $GITHUB_ENV
           SINCE=$(date +%s); echo "SINCE=$SINCE" >> $GITHUB_ENV
-          echo "seg_0.mp4 $(python3 -c 'import time;print(time.time())')" > /tmp/vid/index.txt
-          xcrun simctl io "$UDID" recordVideo --codec=h264 --force /tmp/vid/seg_0.mp4 > /dev/null 2>&1 & VPID=$!
+          # rolling 3-minute video parts (each stays under the 50 MB upload limit); index.txt = start times
+          ( n=0; while true; do
+              echo "seg_$n.mp4 $(python3 -c 'import time;print(time.time())')" >> /tmp/vid/index.txt
+              xcrun simctl io "$UDID" recordVideo --codec=h264 --force /tmp/vid/seg_$n.mp4 > /dev/null 2>&1 & R=$!
+              echo $R > /tmp/vid/current.pid; sleep 180; kill -INT $R 2>/dev/null; wait $R 2>/dev/null; n=$((n+1)); done ) & VPID=$!
           xcrun simctl spawn "$UDID" log stream --level debug --style compact --predicate "process == \"$EXE\"" > "$RUN_DIR/applog_ios.txt" 2>/dev/null & LPID=$!
           TEST_RUNNER_GIL_BUNDLE="$BUNDLE" TEST_RUNNER_GIL_OUT="$RUN_DIR" TEST_RUNNER_GIL_MINUTES="$MINUTES" TEST_RUNNER_GIL_ARGS="$GIL_ARGS" \
             perl -e 'alarm shift; exec @ARGV' $(( (MINUTES + 25) * 60 )) xcodebuild test-without-building -xctestrun "$XCR" -destination "id=$UDID" \
             -only-testing:GILCrawler/GILCrawler/testExplore -test-timeouts-enabled NO -resultBundlePath "$RUNNER_TEMP/explore.xcresult" \
             > explore.log 2>&1
           echo "crawler exit $?"; grep -E "GIL crawl done|error:|Test Case .*(passed|failed)" explore.log | head -10
-          kill -INT $VPID 2>/dev/null; kill $LPID 2>/dev/null; sleep 5
+          kill $VPID 2>/dev/null; kill -INT "$(cat /tmp/vid/current.pid 2>/dev/null)" 2>/dev/null; kill $LPID 2>/dev/null; sleep 6
+          echo "video parts: $(ls /tmp/vid/*.mp4 2>/dev/null | wc -l | tr -d ' ')"
           ls "$RUN_DIR" | head -20
           [ -f "$RUN_DIR/findings.json" ] || { echo "::error::the iOS engine wrote no results"; tail -60 explore.log; exit 1; }
           python3 - <<PY

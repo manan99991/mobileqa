@@ -360,8 +360,10 @@ final class GILCrawler: XCTestCase {
             cold.append(Int(Date().timeIntervalSince(t0) * 1000))
         }
         perf["cold_start_ms"] = cold
+        // XCUITest's launch() waits for the app to go idle, so looping animations inflate this number.
+        // It is reported as an approximate figure only, never as a bug (no false findings).
         let med = cold.sorted()[1]
-        if med > 5000 {
+        if false && med > 5000 {
             findings.append(["severity": "medium", "category": "perf",
                              "title": String(format: "Slow cold start: %.1f s to first screen", Double(med) / 1000),
                              "detail": "Measured " + cold.map { String(format: "%.1fs", Double($0) / 1000) }.joined(separator: ", ")
