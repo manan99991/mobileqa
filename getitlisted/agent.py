@@ -54,6 +54,7 @@ class Probe:
         self.adb.sh("touch /sdcard/.gil_marker")
         return {
             "t": time.time(),
+            "epoch": int((self.adb.sh("date +%s") or "0").strip() or 0),
             "devtime": self.adb.sh("date +'%m-%d %H:%M:%S.000'").strip(),
             "calendar": self._count("content://com.android.calendar/events"),
             "contacts": self._count("content://com.android.contacts/raw_contacts"),
@@ -72,16 +73,23 @@ class Probe:
                           "ext": f.rsplit(".", 1)[-1].lower() if "." in f else ""})
         # app-private outputs for debuggable builds
         mins = int((time.time() - before["t"]) // 60) + 2
-        priv = []
-        for line in self.adb.sh(f"run-as {self.pkg} find files cache -type f -mmin -{mins} -exec stat -c '%s %n' {{}} + 2>/dev/null | head -30",
+        priv, changed = [], []
+        for line in self.adb.sh(f"run-as {self.pkg} find files cache -type f -mmin -{mins} -exec stat -c '%s %Y %n' {{}} + 2>/dev/null | head -60",
                                 timeout=60).splitlines():
-            parts = line.strip().split(" ", 1)
-            if len(parts) == 2 and parts[0].isdigit() and not re.search(r"(\.(xml|json|db|prof|tmp|lock)|-journal|-wal|-shm)$|/(code_cache|WebView|image_manager)", parts[1]):
+            parts = line.strip().split(" ", 2)
+            if len(parts) != 3 or not parts[0].isdigit() or not parts[1].isdigit():
+                continue
+            if before.get("epoch") and int(parts[1]) < before["epoch"]:
+                continue                       # written before this test started: not this test's output
+            changed.append(parts[2])
+            parts = [parts[0], parts[2]]
+            if not re.search(r"(\.(xml|json|db|prof|tmp|lock|lck)|-journal|-wal|-shm)$|/(code_cache|WebView|image_manager)", parts[1]):
                 files.append({"path": "app:" + parts[1], "bytes": int(parts[0]),
                               "ext": parts[1].rsplit(".", 1)[-1].lower() if "." in parts[1] else ""})
                 priv.append(parts[1])
         facts["new_files"] = files
         facts["new_private_files"] = priv[:20]
+        facts["changed_private_files"] = changed[:40]
         after = self.snap_counts()
         for k in ("calendar", "contacts"):
             if before.get(k, -1) >= 0 and after.get(k, -1) >= 0:
@@ -161,6 +169,12 @@ def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_te
         junk = re.compile(r"(\.lck|-journal|-wal|-shm|\.db|\.tmp|\.xml)$|/shared_prefs/|/no_backup/|/code_cache/", re.I)
         files = [f for f in files if not junk.search(f["path"] if isinstance(f, dict) else str(f))]
         facts = dict(facts, new_private_files=[x for x in (facts.get("new_private_files") or []) if not junk.search(str(x))])
+        if (arg or "").startswith("path:"):
+            needle = arg[5:]
+            allp = [f["path"] if isinstance(f, dict) else str(f) for f in files] + [str(x) for x in (facts.get("new_private_files") or []) + (facts.get("changed_private_files") or [])]
+            hitp = [p for p in allp if needle in p]
+            return ("pass", f"The app recorded a finished result ({Path(hitp[0]).name} updated)") if hitp else \
+                   ("fail", f"The app did not record a finished result ({needle} was not written)")
         want = kinds.get((arg or "").lower())
         hit = [f for f in files if not want or f["ext"] in want] + ([] if want else facts.get("new_private_files") or [])
         priv = [p for p in (facts.get("new_private_files") or []) if not want or p.rsplit(".", 1)[-1].lower() in want]
@@ -332,7 +346,7 @@ class Agent:
 
     def share_in(self, kind: str, text: str | None = None) -> tuple[bool, str]:
         """Share a sample file (or text) into the app the way a person does from Gallery/Files: Android's Share sheet."""
-        self.adb.sh(f"am force-stop {self.pkg}"); self.sleep(1)
+        self.close_strays(); self.adb.sh(f"am force-stop {self.pkg}"); self.sleep(1)
         if kind == "text" or text:
             out = self.adb.sh(f"am start -W -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "
                               f"{shlex.quote(text or '')} -p {self.pkg}", timeout=40)
@@ -348,12 +362,24 @@ class Agent:
                           f"--grant-read-uri-permission -p {self.pkg}", timeout=40)
         return self._landed(out, f"Share the sample {kind} “{name}” to the app from the phone's Share sheet")
 
-    def app_in_front(self) -> bool:
-        """Window focus can lag on a cold start; the resumed activity is the reliable answer."""
+    def front_package(self) -> str:
+        """The app really in front. Window focus lags on a cold start; Android's top resumed activity doesn't."""
         if self.ios:
-            return self.adb.top_package() == self.pkg
-        resumed = self.adb.sh("dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity|ResumedActivity:'")
-        return self.pkg in (resumed or "") or self.adb.top_package() == self.pkg
+            return self.adb.top_package()
+        out = self.adb.sh("dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity'") or ""
+        for key in ("topResumedActivity", "mResumedActivity"):
+            m = re.search(key + r"=ActivityRecord\{\S+ u\d+ ([\w.]+)/", out)
+            if m:
+                return m.group(1)
+        return self.adb.top_package()
+
+    def app_in_front(self) -> bool:
+        return self.front_package() == self.pkg
+
+    def close_strays(self):
+        """A picker or other app left open by the last test must not cover the next one."""
+        for p in PICKER_PKGS:
+            self.adb.sh(f"am force-stop {p}")
 
     def _landed(self, out: str, how: str) -> tuple[bool, str]:
         """Android said ok — but is the app really in front now? Report exactly what happened if not."""
@@ -366,7 +392,7 @@ class Agent:
             lg = self.adb.sh("logcat -d -v brief -t 400", timeout=40)
             keep = [l for l in lg.splitlines() if re.search(r"ActivityTaskManager|ActivityManager|AndroidRuntime|" + re.escape(self.pkg), l)]
             print("agent: share diagnostics ->", said, "\n  " + "\n  ".join(keep[-25:]))
-        return False, f"After sharing, the app was not on screen ({self.adb.top_package() or 'nothing'} was); Android said: {said}"
+        return False, f"After sharing, the app was not on screen ({self.front_package() or 'nothing'} was); Android said: {said}"
 
     def find_target(self, u: dict, target: str, near: str = "") -> dict | None:
         t = (target or "").strip().lower()
@@ -536,8 +562,11 @@ class Agent:
                 else:
                     blocked.append("No picker item could be chosen"); human.append("(no picker item found)")
             elif do == "pick":
-                self.sleep(1.5)
-                if self.adb.top_package() in PICKER_PKGS:
+                for _ in range(8):                      # the picker can take a few seconds to come up
+                    self.sleep(1)
+                    if self.front_package() in PICKER_PKGS:
+                        break
+                if self.front_package() in PICKER_PKGS:
                     ok = pick_in_picker(self.adb, parse_ui(self.adb.dump(), ""), self.sleep, st.get("kind"))
                     self.sleep(2)
                     if ok and self.app_in_front():
@@ -577,7 +606,7 @@ class Agent:
             if self.adb.crash_count(self.pkg) > c0:
                 break
             # bring the app back if a share sheet / other app opened, so later steps run in the app
-            top = self.adb.top_package()
+            top = self.front_package()
             if self.ios and top != self.pkg:
                 self.sleep(1.5); self.adb.back(); self.sleep(1.2)
             elif top and top != self.pkg and top not in PICKER_PKGS and top not in PERMISSION_PKGS:

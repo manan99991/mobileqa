@@ -317,11 +317,8 @@
   "expected": "The details are pulled out and the result is kept.",
   "checks": [
    {
-    "oracle": "screen_changed"
-   },
-   {
     "oracle": "new_file",
-    "arg": ""
+    "arg": "path:history/index.json"
    },
    {
     "oracle": "no_app_error_logged"
@@ -802,6 +799,11 @@
   "expected": "An audio file is saved.",
   "checks": [
    {
+    "oracle": "text_not_on_screen",
+    "arg": "Check that a voice is installed",
+    "pre": true
+   },
+   {
     "oracle": "new_file",
     "arg": "audio"
    },
@@ -836,11 +838,8 @@
   "expected": "A three-sentence summary is produced and kept.",
   "checks": [
    {
-    "oracle": "screen_changed"
-   },
-   {
     "oracle": "new_file",
-    "arg": ""
+    "arg": "path:history/index.json"
    },
    {
     "oracle": "no_app_error_logged"
