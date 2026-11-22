@@ -8,32 +8,12 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: List free vision models and try one call
+      - name: Raw responses
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
-          code=$(curl -s -o cat.json -w "%{http_code}" https://models.github.ai/catalog/models -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28")
-          echo "catalog http $code"; head -c 300 cat.json; echo
-          python3 - <<'PY' || true
-          import json
-          d=json.load(open("cat.json"))
-          print(len(d),"models")
-          for m in d:
-              if "image" in (m.get("supported_input_modalities") or []):
-                  print("VISION", m["id"], m.get("rate_limit_tier"), m.get("limits"))
-          PY
-          python3 -c "from PIL import Image" 2>/dev/null || pip install -q pillow
-          python3 - <<'PY'
-          import base64,io,json,os,urllib.request
-          from PIL import Image, ImageDraw
-          im=Image.new("RGB",(400,300),"white"); d=ImageDraw.Draw(im); d.rectangle([40,200,360,260],fill=(91,61,245)); d.text((150,222),"Compress video",fill="white"); d.text((40,40),"Video under 25 MB",fill="black")
-          b=io.BytesIO(); im.save(b,"JPEG"); u="data:image/jpeg;base64,"+base64.b64encode(b.getvalue()).decode()
-          for model in ["openai/gpt-4.1","openai/gpt-4o","openai/gpt-4.1-mini","openai/gpt-4o-mini"]:
-              body={"model":model,"messages":[{"role":"user","content":[{"type":"text","text":"What is this screen for and what button is on it? Answer in JSON {purpose, button}."},{"type":"image_url","image_url":{"url":u}}]}],"response_format":{"type":"json_object"}}
-              r=urllib.request.Request("https://models.github.ai/inference/chat/completions",data=json.dumps(body).encode(),headers={"Authorization":"Bearer "+os.environ["GITHUB_TOKEN"],"Content-Type":"application/json"})
-              try:
-                  with urllib.request.urlopen(r,timeout=60) as resp:
-                      h=dict(resp.headers); j=json.loads(resp.read())
-                      print("OK",model,j["choices"][0]["message"]["content"][:160],{k:v for k,v in h.items() if "ratelimit" in k.lower()})
-              except urllib.error.HTTPError as e:
-                  print("HTTP",model,e.code,e.read()[:200])
-          PY
+          echo "== catalog"; curl -sS -i https://models.github.ai/catalog/models -H "Authorization: Bearer $GITHUB_TOKEN" | head -c 1500; echo
+          for m in openai/gpt-4o-mini openai/gpt-4.1 openai/gpt-4o; do
+            echo "== chat $m"
+            curl -sS -i https://models.github.ai/inference/chat/completions -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
+              -d "{\"model\":\"$m\",\"messages\":[{\"role\":\"user\",\"content\":\"Say OK\"}]}" | head -c 1500; echo
+          done
