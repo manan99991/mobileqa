@@ -624,6 +624,28 @@ class Agent:
         # let long work finish (exports, compression), then read the result
         self.sleep(3)
         u1 = self.ui()
+        # results often render in stages (a size or speed row appears once the output has been measured):
+        # keep looking for up to 30 s for what the test expects on screen before judging
+        expect = [ck for ck in (c.get("checks") or []) if (ck.get("oracle") == "element_present" and not ck.get("absent"))
+                  or ck.get("oracle") == "text_on_screen"]
+        def _seen(xml: str, texts: list) -> bool:
+            for ck in expect:
+                if ck["oracle"] == "text_on_screen":
+                    if not any((ck.get("arg") or "").lower() in (t or "").lower() for t in texts):
+                        return False
+                    continue
+                alts = [x for x in (ck.get("arg") or "").split("|") if x]
+                m = next((re.search(r'resource-id="' + re.escape(x) + r'"[^>]*', xml) for x in alts if f'resource-id="{x}"' in xml), None)
+                if not m or (ck.get("contains") and ck["contains"].lower() not in m.group(0).lower()):
+                    return False
+            return True
+        t_end = time.time() + 30
+        while expect and time.time() < t_end:
+            xml = self.adb.dump()
+            if _seen(xml, [t for t, *_ in (parse_ui(xml, self.pkg).get("texts") or [])]):
+                break
+            self.sleep(2)
+        u1 = self.ui()
         after_shot = self.shot(f"{c['id']}_after")
         facts = self.probe.diff(before)
         crashed = self.adb.crash_count(self.pkg) > c0
