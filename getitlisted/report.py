@@ -14,13 +14,28 @@ import html, json, sys, datetime
 from pathlib import Path
 
 SEV = {
-    "critical": ("Critical", "#ff7a7a", "rgba(255,122,122,.12)", "rgba(255,122,122,.32)"),
-    "high":     ("High",     "#f5a26b", "rgba(245,162,107,.12)", "rgba(245,162,107,.32)"),
-    "medium":   ("Medium",   "#f5c26b", "rgba(245,194,107,.12)", "rgba(245,194,107,.32)"),
-    "low":      ("Low",      "#9ab6ff", "rgba(91,140,255,.12)",  "rgba(91,140,255,.32)"),
-    "info":     ("Info",     "#95a3b3", "rgba(149,163,179,.12)", "rgba(149,163,179,.3)"),
+    "critical": ("Critical", "#D61F5B", "rgba(229,51,111,.10)", "rgba(229,51,111,.35)"),
+    "high":     ("High",     "#C2560F", "rgba(240,122,43,.10)", "rgba(240,122,43,.35)"),
+    "medium":   ("Medium",   "#5B3DF5", "rgba(91,61,245,.08)", "rgba(91,61,245,.30)"),
+    "low":      ("Low",      "#5E5A80", "rgba(94,90,128,.08)", "rgba(94,90,128,.25)"),
+    "info":     ("Info",     "#8A86A8", "rgba(138,134,168,.08)", "rgba(138,134,168,.25)"),
 }
 SEV_ORDER = ["critical", "high", "medium", "low", "info"]
+
+
+def tip_for(f: dict) -> str:
+    t = (f.get("title") or "").lower()
+    if "tap target" in t:
+        return "Make each control at least 48x48 dp. Add padding or set minHeight/minWidth to 48dp; the icon can stay the same size."
+    if "no label" in t or "screen reader" in t:
+        return "Give each icon button a contentDescription (Compose: contentDescription / Modifier.semantics) so TalkBack reads what it does."
+    if "cold start" in t:
+        return "Move work out of Application.onCreate and the first Activity: lazy-load SDKs, defer network calls, and add a baseline profile."
+    if "random input" in t:
+        return "Replay the stress command in the steps with the same seed to hit the exact input sequence, then guard the code path shown in the log."
+    if "rotat" in t or "background" in t:
+        return "Save and restore screen state (ViewModel / rememberSaveable / onSaveInstanceState) so it survives rotation and process death."
+    return TIP.get(f.get("category", ""), "")
 
 # Generic, honest remediation guidance by category (the engine finds the issue;
 # this is standard advice for that class, not a claim it diagnosed your code).
@@ -80,7 +95,7 @@ def from_run(run_dir, app_name, platform, url_map=None):
             "screen": f.get("screen_name") or f.get("screen", "—"),
             "repro": f.get("repro", []) or [],
             "screenshot": url_map.get(shot, shot if str(shot).startswith("http") else ""),
-            "tip": TIP.get(f.get("category", ""), ""),
+            "tip": tip_for(f),
             "reproduction": f.get("reproduction", ""),
             "reproduction_ratio": f.get("reproduction_ratio", ""),
             "exception": ev.get("exception", ""),
@@ -115,7 +130,7 @@ def build(data):
 
     counts = {k: sum(1 for f in findings if f.get("severity") == k) for k in SEV_ORDER}
     score = readiness(findings)
-    sc = "#49d0a0" if score >= 80 else "#f5c26b" if score >= 55 else "#ff7a7a"
+    sc = "#0E9F7B" if score >= 80 else "#B87900" if score >= 55 else "#D61F5B"
     verdict = ("Looks ready — only minor polish left." if score >= 80 else
                "Close, but a few things need fixing before launch." if score >= 55 else
                "Not ready — issues here would hurt real users.")
@@ -124,7 +139,7 @@ def build(data):
     def tile(label, value):
         return f'<div class="st"><b>{e(value)}</b><span>{e(label)}</span></div>'
 
-    REP = {"confirmed": ("✓ reproduces", "#49d0a0"), "intermittent": ("~ intermittent", "#f5c26b"),
+    REP = {"confirmed": ("✓ reproduces", "#0E9F7B"), "intermittent": ("~ intermittent", "#B87900"),
            "single-occurrence": ("seen once", "#95a3b3")}
     def card(f):
         name, col, bg, bd = SEV[f.get("severity", "low")]
@@ -134,7 +149,7 @@ def build(data):
         repro = ""
         if f.get("repro"):
             repro = '<div class="repro"><b>How to see it:</b><ol>' + "".join(
-                f"<li>{e(s)}</li>" for s in f["repro"][:6]) + "</ol></div>"
+                f"<li>{e(s)}</li>" for s in f["repro"][:25]) + "</ol></div>"
         rep = ""
         if f.get("reproduction") in REP:
             lab, rc = REP[f["reproduction"]]
@@ -213,11 +228,11 @@ def build(data):
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{e(app)} — QA Report · Get It Listed</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{{--bg:#0e1116;--card:#161b22;--card2:#1c232d;--line:#263040;--line2:#313d4e;--text:#eef3f8;--muted:#95a3b3;--faint:#6b7889;--green:#49d0a0;--disp:"Bricolage Grotesque",sans-serif;--sans:"IBM Plex Sans",-apple-system,sans-serif;}}
+  :root{{--bg:#F2EFFF;--card:#FFFFFF;--card2:#F7F5FF;--line:#E4DFFF;--line2:#D6CFFF;--text:#1A1446;--muted:#5E5A80;--faint:#8A86A8;--green:#0E9F7B;--blue-soft:#5B3DF5;--disp:"Unbounded",sans-serif;--sans:"Instrument Sans",-apple-system,sans-serif;}}
   *{{box-sizing:border-box;margin:0;padding:0}}
-  body{{font-family:var(--sans);background:radial-gradient(1100px 500px at 50% -8%,rgba(91,140,255,.10),transparent 60%),var(--bg);color:var(--text);line-height:1.55;-webkit-font-smoothing:antialiased;padding:24px 16px 80px}}
+  body{{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.55;-webkit-font-smoothing:antialiased;padding:24px 16px 80px}}
   .wrap{{max-width:720px;margin:0 auto}} .mk{{width:34px;height:34px}}
   .brand{{display:flex;align-items:center;gap:11px;margin-bottom:20px}}
   .brand h1{{font-family:var(--disp);font-size:18px;font-weight:700}}.brand span{{color:var(--muted);font-size:13px;font-weight:500}}
@@ -241,7 +256,7 @@ def build(data):
   .where{{font-size:12.5px;color:var(--faint);font-weight:500}}
   .ft{{font-family:var(--disp);font-weight:700;font-size:16px;margin-bottom:5px}}.fd{{color:var(--muted);font-size:14.5px}}
   .repro{{margin-top:10px;font-size:13.5px;color:var(--muted)}}.repro b{{color:var(--text)}}.repro ol{{margin:6px 0 0 18px}}.repro li{{margin-bottom:3px}}
-  .fix{{margin-top:10px;font-size:13.5px;color:var(--text);background:rgba(73,208,160,.08);border:1px solid rgba(73,208,160,.22);border-radius:10px;padding:10px 12px}}.fix b{{color:var(--green)}}
+  .fix{{margin-top:10px;font-size:13.5px;color:var(--text);background:rgba(14,159,123,.08);border:1px solid rgba(14,159,123,.30);border-radius:10px;padding:10px 12px}}.fix b{{color:var(--green)}}
   .repb{{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid;letter-spacing:.2px}}
   .cause{{margin-top:11px;background:var(--bg);border:1px solid var(--line2);border-radius:11px;padding:12px 13px}}
   .cause .ck{{font-size:11px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}}
@@ -259,7 +274,7 @@ def build(data):
   .foot{{text-align:center;color:var(--faint);font-size:12px;margin-top:24px}}.foot a{{color:var(--muted)}}
   @media(max-width:480px){{.appname{{font-size:23px}}}}
 </style></head><body><div class="wrap">
-  <div class="brand"><svg class="mk" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="6" fill="#1D4ED8"/><path d="M6.8 12.4l3.2 3.2L17.4 8.2" stroke="#fff" stroke-width="2.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div class="brand"><svg class="mk" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="6" fill="#5B3DF5"/><path d="M6.8 12.4l3.2 3.2L17.4 8.2" stroke="#fff" stroke-width="2.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <div><h1>Get It Listed <span>· automated QA report</span></h1></div></div>
   <div class="card">
     <div class="eyebrow">Tested app · {e(platform)}</div>

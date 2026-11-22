@@ -621,6 +621,20 @@ def find_el(ui: dict, sel: dict, pkg: str) -> dict | None:
 
 
 # ───────────────────────────── replay (reproduce) ─────────────────────────────
+def minimal_trail(trail: list[dict]) -> list[dict]:
+    """Drop rotate-and-back and home-and-reopen pairs, keeping the last two steps intact
+    (if the crash happened right after a rotation, that rotation is the cause)."""
+    out, i, n = [], 0, len(trail)
+    while i < n:
+        a = trail[i]; b = trail[i + 1] if i + 1 < n else None
+        tail = i + 1 >= n - 1
+        if b and not tail and a["kind"] == "rotate" and b["kind"] == "rotate" and a.get("landscape") and not b.get("landscape"):
+            i += 2; continue
+        if b and not tail and a["kind"] == "home" and b["kind"] == "launch":
+            i += 2; continue
+        out.append(a); i += 1
+    return out
+
 def replay_once(adb: Adb, pkg: str, trail: list[dict], sleep=time.sleep) -> bool:
     adb.clear_data(pkg)
     c0, a0 = adb.crash_count(pkg), adb.anr_count(pkg)
@@ -657,14 +671,23 @@ def replay(run_dir: Path, times: int, adb: Adb | None = None, pkg: str | None = 
     adb = adb or Adb()
     pkg = pkg or os.environ["GIL_PACKAGE"]
     findings = json.loads((run_dir / "findings.json").read_text())
-    out = []
+    out, changed = [], False
     for f in findings:
         if f.get("category") != "crash" or not f.get("replay"):
             continue
         n = sum(1 for _ in range(times) if replay_once(adb, pkg, f["replay"], sleep))
+        # try the shortest trail: drop rotate/background detours. Only keep the short
+        # version if it ALSO crashes every single time.
+        short = minimal_trail(f["replay"])
+        if n and len(short) < len(f["replay"]) and all(replay_once(adb, pkg, short, sleep) for _ in range(times)):
+            f["replay"] = short
+            f["repro"] = ["Install the app fresh and open it"] + [st["human"] for st in short if st["kind"] != "launch" or st is not short[0]][-25:]
+            changed = True
         out.append({"title": f["title"], "screen": f.get("screen_name"), "reproduced": n, "of": times})
         print(f"replay: {f['title']} -> {n}/{times}")
     (run_dir / "regress.json").write_text(json.dumps(out, indent=1))
+    if changed:
+        (run_dir / "findings.json").write_text(json.dumps(findings, indent=1))
     return out
 
 
