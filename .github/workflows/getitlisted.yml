@@ -61,7 +61,7 @@ jobs:
         if: inputs.source_repo != ''
         working-directory: internal-src
         run: |
-          ${{ inputs.source_build }} > ../internal-build.log 2>&1 || { tail -40 ../internal-build.log; exit 1; }
+          ( ${{ inputs.source_build }} ) > ../internal-build.log 2>&1 || { tail -40 ../internal-build.log; exit 1; }
           mkdir -p ../internal && cp ${{ inputs.source_apk }} ../internal/
           echo "built: $(ls ../internal)"
 
@@ -182,5 +182,5 @@ jobs:
           rc=$?; [ $rc -eq 0 ] && echo "report published" || { echo "::error::publish failed"; exit 1; }
 
       - name: Mark build done
-        if: always() && env.GIL_SMOKE == '0' && env.GIL_INTERNAL != '1'
+        if: always() && env.BUILD_ID != ''
         run: cd getitlisted && python queue.py finish "$BUILD_ID" ${{ job.status == 'success' && 'ok' || 'failed' }}

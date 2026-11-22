@@ -142,6 +142,55 @@ def crash_tip(ev: dict) -> str:
     return f"{exc or 'The crash'}{where}: {hint}. Then re-run the steps above \u2014 the app should stay open."
 
 
+EXPLAIN_IOS = {
+    "crash": ("The app handles the action and stays open.", "The app closes immediately (crash).",
+              "Every user who takes these steps loses what they were doing. Crashes show up in App Store Connect and drive one-star reviews.",
+              "https://developer.apple.com/documentation/xcode/diagnosing-issues-using-crash-reports-and-device-logs"),
+    "stress": ("The app stays responsive under fast, repeated input.", "The app crashes during rapid taps.",
+               "Fast tappers and double-taps reach this code path in real life.",
+               "https://developer.apple.com/documentation/xcode/diagnosing-issues-using-crash-reports-and-device-logs"),
+    "anr": ("The app responds to every touch right away.", "The app stopped responding for several seconds (a hang).",
+            "Users think the app is frozen; iOS may kill it. Hangs are reported in Xcode Organizer.",
+            "https://developer.apple.com/documentation/xcode/improving-app-responsiveness"),
+    "label": ("VoiceOver reads out what each control does.", "VoiceOver reads a symbol name or nothing for the boxed controls.",
+              "Blind and low-vision users can't tell what these controls do. Accessibility audits flag this.",
+              "https://developer.apple.com/documentation/accessibility/supporting-voiceover-in-your-app"),
+    "tap": ("Every tappable control is at least 44 x 44 pt.", "The boxed control is smaller than 44 pt, so taps miss it.",
+            "People with larger fingers or motor impairments mis-tap.",
+            "https://developer.apple.com/design/human-interface-guidelines/accessibility"),
+    "coldstart": ("The first screen appears quickly from a cold launch.", "The first screen takes longer than 5 seconds.",
+                  "Slow launches drive people away; Apple recommends drawing the first frame within 400 ms.",
+                  "https://developer.apple.com/documentation/xcode/reducing-your-app-s-launch-time"),
+}
+
+
+def ios_tip(f: dict) -> str:
+    k = f.get("kind")
+    if k == "tap":
+        return "Make each control at least 44x44 pt: SwiftUI .frame(minWidth: 44, minHeight: 44) plus .contentShape(Rectangle()), or larger UIButton insets."
+    if k == "label":
+        return 'Give each icon-only button a spoken name: SwiftUI .accessibilityLabel("Share") (or Label("Share", systemImage:)), UIKit accessibilityLabel.'
+    if k == "coldstart":
+        return "Defer work from App init / didFinishLaunching: lazy-load SDKs and data, avoid synchronous disk or network on launch."
+    if k in ("crash", "stress") and f.get("exception"):
+        ex = f["exception"]
+        if "EXC_BREAKPOINT" in ex or "Fatal error" in ex:
+            hint = "a Swift runtime trap (force-unwrap of nil, index out of range or a failed precondition) - check the line shown"
+        elif "EXC_BAD_ACCESS" in ex:
+            hint = "memory accessed after it was freed or through a nil pointer - look for unowned/unsafe references on that line"
+        elif "NSException" in ex or "SIGABRT" in ex:
+            hint = "an exception was thrown and not caught"
+        else:
+            hint = "guard this code path"
+        short = ex.split(" \u2014 ")[0]
+        where = " in " + f["app_frame"] if f.get("app_frame") else ""
+        return short + where + ": " + hint + ". Then re-run the steps above; the app should stay open."
+    t = (f.get("title") or "").lower()
+    if "rotat" in t or "background" in t:
+        return "Keep screen state in @State / @StateObject / @SceneStorage so it survives rotation and the app being backgrounded."
+    return ""
+
+
 def _resolve(run_dir: Path, p) -> Path | None:
     if not p:
         return None
@@ -208,6 +257,9 @@ def from_run(run_dir, app_name, platform, url_map=None):
             "obfuscated": ev.get("obfuscated", False),
         })
     order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    if str(platform).lower().startswith("ios"):
+        for f in findings:
+            f["tip"] = ios_tip(f) or f["tip"]
     findings.sort(key=lambda f: (f["priority"], order.get(f["severity"], 4)))
     for n, f in enumerate(findings, 1):
         f["id"] = f"GIL-{n:03d}"
@@ -217,7 +269,8 @@ def from_run(run_dir, app_name, platform, url_map=None):
             "stats": {"screens": summary.get("screens", 0), "steps": summary.get("steps", 0),
                       "duration_s": summary.get("duration_s", 0)},
             "findings": findings, "coverage": summary, "screens": [],
-            "app_logs": app_log_excerpt(run_dir, summary.get("pids") or []),
+            "app_logs": (json.loads((run_dir / "app_logs.json").read_text()) if (run_dir / "app_logs.json").exists()
+                         else app_log_excerpt(run_dir, summary.get("pids") or [])),
             "video_urls": [], "log_url": "", "icon_url": ""}
 
 
@@ -259,6 +312,7 @@ def hbars(rows, unit="", limit=None, limit_label=""):
 def build(data):
     app_name = data.get("app_name", "Your app")
     platform = data.get("platform", "Android")
+    ios = str(platform).lower().startswith("ios")
     findings = data.get("findings", [])
     device, app, cov = data.get("device") or {}, data.get("app") or {}, data.get("coverage") or {}
     perf, stats = cov.get("performance") or {}, data.get("stats", {})
@@ -274,8 +328,9 @@ def build(data):
                                app.get("version_code") and f'(build {app["version_code"]})'] if x)
     icon = (f'<img class="appicon" src="{e(data["icon_url"])}" alt="">' if data.get("icon_url")
             else f'<div class="appicon ph">{e((app_name or "A")[:1].upper())}</div>')
-    dev_short = " · ".join(x for x in [device.get("model"), device.get("release") and f'Android {device["release"]}',
-                                           device.get("api") and f'API {device["api"]}'] if x) or "Android device"
+    osname = "iOS" if ios else "Android"
+    dev_short = " · ".join(x for x in [device.get("model"), device.get("release") and f'{osname} {device["release"]}',
+                                           device.get("api") and f'API {device["api"]}'] if x) or f"{osname} device"
 
     # ── hero
     hero = f'''<section class="hero">
@@ -345,7 +400,7 @@ def build(data):
     def card(f):
         sname, scol, sbg, sbd = SEV[f["severity"]]
         plab, pcol = PRIORITY[f["priority"]]
-        expected, actual, impact, ref = EXPLAIN.get(f["kind"], ("", "", "", ""))
+        expected, actual, impact, ref = (EXPLAIN_IOS if ios else EXPLAIN).get(f["kind"], EXPLAIN.get(f["kind"], ("", "", "", "")))
         if f["kind"] in ("crash", "anr", "stress", "nonfatal", "coldstart") and f.get("detail"):
             actual = f["detail"]
         rep = ""
@@ -442,7 +497,7 @@ def build(data):
 
     # ── environment
     env = [("Device", device.get("model") or "—"), ("Device type", device.get("kind") or "Android emulator"),
-           ("Android", " · ".join(x for x in [device.get("release") and f'Android {device["release"]}', device.get("api") and f'API {device["api"]}'] if x) or "—"),
+           (osname, " · ".join(x for x in [device.get("release") and f'{osname} {device["release"]}', device.get("api") and f'API {device["api"]}'] if x) or "—"),
            ("Screen", " · ".join(x for x in [device.get("width") and device.get("height") and f'{device["width"]} × {device["height"]} px', device.get("density") and f'{device["density"]} dpi'] if x) or "—"),
            ("CPU / ABI", device.get("abi") or "—"), ("Locale · time zone", f'{device.get("locale") or "en-US"} · {device.get("timezone") or "UTC"}'),
            ("Network", device.get("network") or "Wi-Fi"), ("Browser", "Not used — native app (links that open a browser are listed under integrations)"),
@@ -451,9 +506,9 @@ def build(data):
     env_html = '<section class="card"><h2>Test environment</h2><div class="envg">' + "".join(
         f'<div class="kv"><span>{e(k)}</span><b>{e(v)}</b></div>' for k, v in env) + '</div></section>'
 
-    method = ('<section class="card"><h2>How we tested</h2><p class="muted">We installed your build on a clean Android device and worked through it '
-              'systematically: timed three cold starts, opened every screen we could reach, tapped every safe control, submitted forms empty and filled, '
-              'rotated and backgrounded the app on each new screen, ran seeded random-input stress tests, and checked every screen against Google’s '
+    method = ('<section class="card"><h2>How we tested</h2><p class="muted">We installed your build on a clean ' + ('iPhone simulator' if ios else 'Android device') + ' and worked through it '
+              'systematically: loaded it with realistic sample content, timed three cold starts, opened every screen we could reach, tapped every safe control, submitted forms empty and filled, '
+              'rotated and backgrounded the app on each new screen, ran seeded random-input stress tests, and checked every screen against ' + ('Apple’s' if ios else 'Google’s') + ' '
               'accessibility rules. Every crash was replayed from a fresh install, and only crashes inside your app’s own process that happen again are '
               'reported. Purchase, payment, delete-account and sign-out controls are never tapped.</p></section>')
 

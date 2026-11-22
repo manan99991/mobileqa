@@ -1,0 +1,110 @@
+# Test Tenzy's iPhone app with the Get It Listed iOS engine (XCUITest crawler driving the
+# simulator build by bundle id). Builds the latest handytools code (Debug = Pro unlocked),
+# crawls, replays crashes from fresh installs, reads Apple crash reports, publishes to
+# the tenzy-ios dashboard. Nothing is uploaded to GitHub.
+name: Get It Listed — Tenzy iPhone
+
+on:
+  push:
+    branches: [getitlisted-engine]
+    paths: ["getitlisted/tenzy/ios.txt"]
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 150
+    permissions: { contents: read, id-token: write }
+    env:
+      GIL_APP_KEY: tenzy-ios
+      GIL_APP_NAME: Tenzy
+      GIL_PLATFORM: iOS
+      GIL_ARGS: "-sample"
+      MINUTES: "30"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { repository: manan99991/putt-party-play, ref: handytools, path: tenzy }
+
+      - name: Xcode + tools
+        run: |
+          ls /Applications | grep -i xcode
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          xcodebuild -version
+          brew install xcodegen >/dev/null 2>&1 || true
+          python3 -m pip install --break-system-packages -q pillow >/dev/null 2>&1 || python3 -m pip install -q pillow >/dev/null 2>&1 || true
+
+      - name: Build Tenzy for the simulator (Debug = Pro unlocked)
+        working-directory: tenzy/ios
+        run: |
+          set -o pipefail
+          xcodegen generate >/dev/null
+          xcodebuild build -project HandyTools.xcodeproj -scheme HandyTools -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/tdd" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO -skipPackagePluginValidation -skipMacroValidation \
+            2>&1 | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          APP=$(find "$RUNNER_TEMP/tdd" -path "*Debug-iphonesimulator/*.app" -maxdepth 5 -name "HandyTools.app" | head -1)
+          [ -n "$APP" ] || { tail -60 build.log; exit 1; }
+          echo "APP=$APP" >> $GITHUB_ENV
+          echo "BUNDLE=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")" >> $GITHUB_ENV
+          echo "EXE=$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$APP/Info.plist")" >> $GITHUB_ENV
+
+      - name: Build the Get It Listed iOS engine
+        working-directory: getitlisted/ios
+        run: |
+          set -o pipefail
+          xcodegen generate >/dev/null
+          xcodebuild build-for-testing -project GILRunner.xcodeproj -scheme GILRunner \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/gdd" 2>&1 | tee runner.log \
+            | grep -E "error:|TEST BUILD (SUCCEEDED|FAILED)|BUILD (SUCCEEDED|FAILED)" || true
+          XCR=$(find "$RUNNER_TEMP/gdd" -name "*.xctestrun" | head -1)
+          [ -n "$XCR" ] || { grep -B2 -A6 "error:" runner.log | head -80; exit 1; }
+          echo "XCR=$XCR" >> $GITHUB_ENV
+
+      - name: Boot a fresh iPhone simulator and load sample content
+        run: |
+          RT=$(xcrun simctl list runtimes -j | python3 -c "import json,sys;r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']];r.sort(key=lambda x:[int(p) for p in x['version'].split('.')]);print(r[-1]['identifier'])")
+          DT=$(xcrun simctl list devicetypes -j | python3 -c "import json,sys;d=[x['identifier'] for x in json.load(sys.stdin)['devicetypes'] if 'iPhone' in x['name'] and 'Pro' in x['name'] and 'Max' not in x['name']];print(d[-1])")
+          UDID=$(xcrun simctl create GIL "$DT" "$RT")
+          xcrun simctl boot "$UDID"; xcrun simctl bootstatus "$UDID" -b >/dev/null
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl privacy "$UDID" grant all "$BUNDLE" || true
+          mkdir -p "$RUNNER_TEMP/media"
+          python3 -c "import sys;sys.path.insert(0,'getitlisted');import seed_device as s;from pathlib import Path;[s.jpeg_with_gps(Path('$RUNNER_TEMP/media/IMG_%d.jpg'%i),i) for i in range(6)]" || true
+          ls "$RUNNER_TEMP"/media/*.jpg >/dev/null 2>&1 && xcrun simctl addmedia "$UDID" "$RUNNER_TEMP"/media/*.jpg || true
+          echo "simulator: $(xcrun simctl list devices -j | python3 -c "import json,sys;print([d['name'] for v in json.load(sys.stdin)['devices'].values() for d in v if d['udid']=='$UDID'])") on $RT"
+
+      - name: Test the app
+        run: |
+          RUN_DIR="$PWD/reports/gil-ios-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$RUN_DIR" /tmp/vid
+          echo "RUN_DIR=$RUN_DIR" >> $GITHUB_ENV
+          SINCE=$(date +%s); echo "SINCE=$SINCE" >> $GITHUB_ENV
+          echo "seg_0.mp4 $(python3 -c 'import time;print(time.time())')" > /tmp/vid/index.txt
+          xcrun simctl io "$UDID" recordVideo --codec=h264 --force /tmp/vid/seg_0.mp4 > /dev/null 2>&1 & VPID=$!
+          xcrun simctl spawn "$UDID" log stream --level debug --style compact --predicate "process == \"$EXE\"" > "$RUN_DIR/applog_ios.txt" 2>/dev/null & LPID=$!
+          TEST_RUNNER_GIL_BUNDLE="$BUNDLE" TEST_RUNNER_GIL_OUT="$RUN_DIR" TEST_RUNNER_GIL_MINUTES="$MINUTES" TEST_RUNNER_GIL_ARGS="$GIL_ARGS" \
+            timeout $(( (MINUTES + 25) * 60 )) xcodebuild test-without-building -xctestrun "$XCR" -destination "id=$UDID" \
+            -only-testing:GILCrawler/GILCrawler/testExplore -test-timeouts-enabled NO -resultBundlePath "$RUNNER_TEMP/explore.xcresult" \
+            > explore.log 2>&1
+          echo "crawler exit $?"; grep -E "GIL crawl done|error:|Test Case .*(passed|failed)" explore.log | head -10
+          kill -INT $VPID 2>/dev/null; kill $LPID 2>/dev/null; sleep 5
+          ls "$RUN_DIR" | head -20
+          [ -f "$RUN_DIR/findings.json" ] || { echo "::error::the iOS engine wrote no results"; tail -60 explore.log; exit 1; }
+          python3 - <<PY
+          import json,subprocess,os
+          d=json.loads(subprocess.run(["xcrun","simctl","list","devices","-j"],capture_output=True,text=True).stdout)
+          dev=[x for k,v in d["devices"].items() for x in v if x["udid"]=="$UDID"][0]
+          rt=[k for k,v in d["devices"].items() for x in v if x["udid"]=="$UDID"][0]
+          ver=rt.split("iOS-")[-1].replace("-",".")
+          json.dump({"model":dev["name"]+" (Simulator)","release":ver,"api":"","kind":"iOS Simulator (Xcode)","locale":"en-US","timezone":"UTC",
+                     "network":"Mac host network","abi":"arm64","foregrounded":True}, open("$RUN_DIR/device.json","w"))
+          PY
+
+      - name: Replay crashes, trust gate, publish
+        run: |
+          python3 getitlisted/ios_host.py appinfo "$APP" "$RUN_DIR"
+          python3 getitlisted/ios_host.py replay "$RUN_DIR" "$APP" "$BUNDLE" "$UDID" "$XCR" 3 || echo "::warning::replay incomplete"
+          python3 getitlisted/ios_host.py trust "$RUN_DIR" "$APP" "$SINCE"
+          python3 -c "import json,sys;s=json.load(open(sys.argv[1]+'/summary.json'))['summary'];print('screens',s['screens'],'actions',s['steps']);[print('FINDING',f['severity'],f['category'],f['title'],'|',f.get('reproduction','')) for f in json.load(open(sys.argv[1]+'/findings.trusted.json'))]" "$RUN_DIR"
+          GIL_RUN_DIR="$RUN_DIR" GIL_VIDEO_DIR=/tmp/vid python3 getitlisted/push.py

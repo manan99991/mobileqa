@@ -1,0 +1,38 @@
+# Get It Listed iOS runner: a tiny host app + a UI-test bundle that drives ANY installed
+# simulator app by bundle id (XCUIApplication(bundleIdentifier:)). No customer code needed.
+name: GILRunner
+options:
+  bundleIdPrefix: app.getitlisted
+  deploymentTarget: { iOS: "17.0" }
+targets:
+  GILHost:
+    type: application
+    platform: iOS
+    sources: [Host]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.getitlisted.host
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        SWIFT_VERSION: "5.0"
+  GILCrawler:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Crawler]
+    dependencies: [{ target: GILHost }]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: GILHost
+        PRODUCT_BUNDLE_IDENTIFIER: app.getitlisted.crawler
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        SWIFT_VERSION: "5.0"
+schemes:
+  GILRunner:
+    build: { targets: { GILHost: all, GILCrawler: [test] } }
+    test: { targets: [GILCrawler] }
