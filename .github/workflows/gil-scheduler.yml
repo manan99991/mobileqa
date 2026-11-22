@@ -1,0 +1,41 @@
+# Get It Listed — automatic test scheduler.
+# Every 30 minutes: new customer uploads get tested, and each active paid app is
+# re-tested once a day for its 14 days. Only build ids pass through here.
+name: Get It Listed — scheduler
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+
+concurrency: { group: gil-scheduler, cancel-in-progress: false }
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    outputs:
+      ids: ${{ steps.p.outputs.ids }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: getitlisted-engine }
+      - id: p
+        env:
+          SB_SERVICE_KEY: ${{ secrets.SB_SERVICE_KEY }}
+        run: |
+          [ -n "$SB_SERVICE_KEY" ] || { echo "::error::SB_SERVICE_KEY secret is not set"; exit 1; }
+          ids=$(python3 getitlisted/queue.py pick)
+          echo "ids=$ids" >> $GITHUB_OUTPUT
+          echo "builds to test: $ids"
+
+  test:
+    needs: pick
+    if: needs.pick.outputs.ids != '[]' && needs.pick.outputs.ids != ''
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        build_id: ${{ fromJSON(needs.pick.outputs.ids) }}
+    uses: manan99991/mobileqa/.github/workflows/getitlisted.yml@getitlisted-engine
+    with:
+      build_id: ${{ format('{0}', matrix.build_id) }}
+    secrets: inherit
