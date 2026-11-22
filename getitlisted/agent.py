@@ -197,8 +197,11 @@ def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_te
         if not imgs:
             return "na", "No new photo to inspect."
         src = [f for f in ins if f["ext"] in ("jpg", "jpeg", "heic")]
-        if src and probe.exif_has_gps(src[-1]["path"]) is False:
-            return "na", "The input photo had no location in it, so this can't prove the location was removed."
+        src_gps = probe.exif_has_gps(src[-1]["path"]) if src else None
+        seeded_gps = any(x.get("gps") for x in (seed or {}).get("files", []))
+        if not (src_gps or (not src and seeded_gps)):
+            return "na", ("The input photo had no location in it" if src_gps is False else
+                          "We couldn't confirm the input photo had a location") + ", so this can't prove the location was removed."
         g = probe.exif_has_gps(imgs[-1]["path"])
         if g is None:
             return "na", "Could not read the photo's metadata."
@@ -233,8 +236,9 @@ def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_te
         blob = " ".join(final_texts).lower()
         return ("pass", f"Screen shows “{arg}”") if arg.lower() in blob else ("fail", f"Screen does not show “{arg}”")
     if oracle in ("video_silent", "output_under_mb"):
-        exts = ("mp4", "mov", "m4v") if oracle == "video_silent" else None
-        outs = [f for f in files if (not exts or f["ext"] in exts) and f.get("bytes")]
+        MEDIA = ("jpg", "jpeg", "png", "heic", "webp", "gif", "mp4", "mov", "m4v", "3gp", "webm", "pdf", "m4a", "mp3", "wav", "aac")
+        exts = ("mp4", "mov", "m4v") if oracle == "video_silent" else MEDIA
+        outs = [f for f in files if f["ext"] in exts and f.get("bytes")]
         if not outs:
             return "na", "No output file to inspect."
         o = outs[-1]
@@ -246,12 +250,14 @@ def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_te
         if not data:
             return "na", "Could not read the video file."
         src = [f for f in ins if f["ext"] in exts]
-        if src:
-            sd = probe.read_bytes(src[-1]["path"])
-            if sd and not has_sound(sd):
-                return "na", "The input video had no sound to begin with, so this can't prove the sound was removed."
+        sd = probe.read_bytes(src[-1]["path"]) if src else b""
+        seeded_sound = any(x.get("kind") == "video" for x in (seed or {}).get("files", []))   # our seeded videos all carry a tone
+        if src and sd and not has_sound(sd):
+            return "na", "The input video had no sound to begin with, so this can't prove the sound was removed."
+        if not (src and sd) and not seeded_sound:
+            return "na", "We couldn't confirm the input video had sound, so this can't prove the sound was removed."
         return ("fail", f"{Path(o['path']).name} still has a sound track") if has_sound(data) else \
-               ("pass", f"{Path(o['path']).name} has no sound track" + (" (the input had one)" if src else ""))
+               ("pass", f"{Path(o['path']).name} has no sound track (the input had one)")
     if oracle == "text_not_on_screen":
         if not arg:
             return "na", ""
