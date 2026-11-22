@@ -11,8 +11,9 @@ jobs:
       - name: List free vision models and try one call
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
-          curl -s https://models.github.ai/catalog/models -H "Authorization: Bearer $GITHUB_TOKEN" > cat.json
-          python3 - <<'PY'
+          code=$(curl -s -o cat.json -w "%{http_code}" https://models.github.ai/catalog/models -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28")
+          echo "catalog http $code"; head -c 300 cat.json; echo
+          python3 - <<'PY' || true
           import json
           d=json.load(open("cat.json"))
           print(len(d),"models")

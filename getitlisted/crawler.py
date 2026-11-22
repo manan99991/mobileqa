@@ -185,7 +185,7 @@ def parse_ui(xml: str, pkg: str) -> dict:
         x1, y1, x2, y2 = map(int, m.groups())
         t = (n.get("text") or "").strip()
         if t and p == pkg:
-            texts.append((t, y1, y2 - y1))
+            texts.append((t, y1, y2 - y1, x1, x2))
         if x2 - x1 < 2 or y2 - y1 < 2:
             continue
         cls = n.get("class") or ""
@@ -212,6 +212,8 @@ def parse_ui(xml: str, pkg: str) -> dict:
     return {"elements": elements, "pkgs": pkgs, "ok": True, "texts": texts}
 
 
+BROKEN_TEXT = re.compile(r"(^|\s)(null|undefined|NaN|nil)(\s|$)|%[sd@]|\{\d\}|\{\{.*\}\}|\bTODO\b|\bFIXME\b|lorem ipsum|"
+                         r"@string/|R\.string\.|\$\{|\[object Object\]|java\.lang\.|Exception:")
 NAV_WORDS = re.compile(r"^[‹<←\s]*(back|skip|clear|close|cancel|done|next|ok|menu|more|search|test entry \d+|photo)$", re.I)
 
 
@@ -220,8 +222,7 @@ def screen_title(ui: dict) -> str:
     texts = ui.get("texts") or []
     if not texts:
         return ""
-    top = max(y for _, y, _ in texts) or 1
-    cands = [(t, y, h) for t, y, h in texts if y < 900 and 3 <= len(t) <= 40 and not NAV_WORDS.match(t)]
+    cands = [(t, y, h) for t, y, h, *_ in texts if y < 900 and 3 <= len(t) <= 40 and not NAV_WORDS.match(t)]
     if not cands:
         return ""
     cands.sort(key=lambda c: (-c[2], c[1]))
@@ -431,8 +432,14 @@ class Crawler:
             name = f"{name} ({sum(1 for sc in self.screens.values() if sc['name'].startswith(name)) + 1})"
         shot = self.out / "screens" / f"s{len(self.screens):02d}.png"
         self.adb.screenshot(shot)
+        last_launch = max([i for i, h in enumerate(self.history) if h["kind"] == "launch"] or [0])
         self.screens[sig] = {"name": name, "activity": activity, "shot": str(shot),
-                             "controls": len(ui["elements"]), "t": time.time()}
+                             "controls": len(ui["elements"]), "t": time.time(),
+                             "ui": [{"label": el_label(e), "cls": e["cls"], "rid": e["rid"], "editable": e["editable"],
+                                     "bounds": e["bounds"]} for e in ui["elements"] if e["pkg"] == self.pkg][:60],
+                             "texts": [t for t, *_ in (ui.get("texts") or [])][:80],
+                             "reach": [h for h in self.history[last_launch + 1:] if h["kind"] in ("tap", "type", "pick", "back")]}
+        self._content_checks(ui, name, str(shot))
         # accessibility — one grouped finding per screen, objective rules only
         iss = a11y_issues([e for e in ui["elements"] if e["pkg"] == self.pkg], self.density)
         if iss["unlabeled"] and sig not in self.a11y_flagged:
@@ -459,6 +466,44 @@ class Crawler:
             })
         self.a11y_flagged.add(sig)
         return name
+
+    def _content_checks(self, ui: dict, name: str, shot: str):
+        """Objective text defects a human tester would spot: leaked placeholders and overlapping text."""
+        texts = ui.get("texts") or []
+        bad = []
+        for t, y, h, x1, x2 in texts:
+            if BROKEN_TEXT.search(t):
+                bad.append((t, [x1, y, x2, y + h]))
+        if bad:
+            ex = "; ".join(f"\u201c{t[:50]}\u201d" for t, _ in bad[:3])
+            self.findings.append({
+                "severity": "medium", "category": "content",
+                "title": f"Placeholder or broken text shown to users on {name}",
+                "detail": f"The screen shows raw developer text: {ex}. Users see this as a bug.",
+                "screen_name": name, "repro": ["Open the app", f"Go to {name}", "Read the boxed text"],
+                "evidence": {"screenshot": shot, "t": time.time(), "activity": name,
+                             "elements": [{"label": t[:40], "bounds": b} for t, b in bad[:8]]},
+            })
+        boxes = [(t, x1, y, x2, y + h) for t, y, h, x1, x2 in texts if h > 8 and x2 - x1 > 8]
+        over = []
+        for i in range(len(boxes)):
+            for j in range(i + 1, len(boxes)):
+                a, b = boxes[i], boxes[j]
+                ix = min(a[3], b[3]) - max(a[1], b[1]); iy = min(a[4], b[4]) - max(a[2], b[2])
+                if ix > 6 and iy > 6 and a[0] != b[0]:
+                    small = min((a[3] - a[1]) * (a[4] - a[2]), (b[3] - b[1]) * (b[4] - b[2]))
+                    if ix * iy > 0.35 * small:
+                        over.append((a, b))
+        if over:
+            (a, b) = over[0]
+            self.findings.append({
+                "severity": "low", "category": "ui",
+                "title": f"Overlapping text on {name}",
+                "detail": f"\u201c{a[0][:40]}\u201d and \u201c{b[0][:40]}\u201d are drawn on top of each other.",
+                "screen_name": name, "repro": ["Open the app", f"Go to {name}", "Look at the boxed text"],
+                "evidence": {"screenshot": shot, "t": time.time(), "activity": name,
+                             "elements": [{"label": x[0][:40], "bounds": list(x[1:])} for pair in over[:3] for x in pair]},
+            })
 
     def _edge_tests(self, sig: str, name: str):
         """Rotation + background/resume on each new screen — classic state-loss crash sources."""
@@ -671,7 +716,8 @@ class Crawler:
             "performance": self.perf, "integrations": self.integrations[:40],
             "slowest_screens": sorted(self.slowest, reverse=True)[:5],
             "screen_list": [{"name": s["name"], "activity": s["activity"], "controls": s["controls"],
-                             "shot": s["shot"], "t": s.get("t")} for s in self.screens.values()],
+                             "shot": s["shot"], "t": s.get("t"), "ui": s.get("ui"), "texts": s.get("texts"),
+                             "reach": s.get("reach")} for s in self.screens.values()],
             "started_at": self.started_at, "density": self.density,
             "pids": sorted(self.pids),
         }
