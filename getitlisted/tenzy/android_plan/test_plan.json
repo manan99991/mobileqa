@@ -16,20 +16,17 @@
     "near": "Privacy share shield"
    },
    {
-    "do": "tap",
-    "target": "Choose photos"
-   },
-   {
-    "do": "pick",
-    "kind": "image"
-   },
-   {
     "do": "wait",
     "seconds": 10
    }
   ],
   "expected": "A new photo is saved with the location removed.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "image"
@@ -60,14 +57,6 @@
     "near": "Privacy share shield"
    },
    {
-    "do": "tap",
-    "target": "Choose photos"
-   },
-   {
-    "do": "pick",
-    "kind": "image"
-   },
-   {
     "do": "rotate"
    },
    {
@@ -77,6 +66,11 @@
   ],
   "expected": "Rotation mid-run still produces a clean photo.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "image"
@@ -104,20 +98,17 @@
     "near": "ID copy with a safety watermark"
    },
    {
-    "do": "tap",
-    "target": "Choose photos"
-   },
-   {
-    "do": "pick",
-    "kind": "image"
-   },
-   {
     "do": "wait",
     "seconds": 10
    }
   ],
   "expected": "A watermarked copy is saved, with no location in it.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "image"
@@ -148,20 +139,17 @@
     "near": "Photo to PDF"
    },
    {
-    "do": "tap",
-    "target": "Choose photos"
-   },
-   {
-    "do": "pick",
-    "kind": "image"
-   },
-   {
     "do": "wait",
     "seconds": 12
    }
   ],
   "expected": "A PDF is created from the photo.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "pdf"
@@ -189,20 +177,17 @@
     "near": "Photo under 2 MB"
    },
    {
-    "do": "tap",
-    "target": "Choose photos"
-   },
-   {
-    "do": "pick",
-    "kind": "image"
-   },
-   {
     "do": "wait",
     "seconds": 10
    }
   ],
   "expected": "The saved photo is under 2 MB.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "image"
@@ -234,20 +219,17 @@
     "near": "Photo to a pencil sketch"
    },
    {
-    "do": "tap",
-    "target": "Choose photos"
-   },
-   {
-    "do": "pick",
-    "kind": "image"
-   },
-   {
     "do": "wait",
     "seconds": 12
    }
   ],
   "expected": "A sketch image is saved.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "image"
@@ -411,20 +393,17 @@
     "near": "Video without its sound"
    },
    {
-    "do": "tap",
-    "target": "Choose a video"
-   },
-   {
-    "do": "pick",
-    "kind": "video"
-   },
-   {
     "do": "wait",
     "seconds": 40
    }
   ],
   "expected": "A new video with no sound track is saved.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "video"
@@ -455,20 +434,17 @@
     "near": "Grab a still from a video"
    },
    {
-    "do": "tap",
-    "target": "Choose a video"
-   },
-   {
-    "do": "pick",
-    "kind": "video"
-   },
-   {
     "do": "wait",
     "seconds": 25
    }
   ],
   "expected": "A still image is saved.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "image"
@@ -496,20 +472,17 @@
     "near": "Video under 25 MB for email"
    },
    {
-    "do": "tap",
-    "target": "Choose a video"
-   },
-   {
-    "do": "pick",
-    "kind": "video"
-   },
-   {
     "do": "wait",
     "seconds": 40
    }
   ],
   "expected": "The saved video is under 25 MB.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "video"
@@ -541,14 +514,6 @@
     "near": "Video small enough for chat (16 MB)"
    },
    {
-    "do": "tap",
-    "target": "Choose a video"
-   },
-   {
-    "do": "pick",
-    "kind": "video"
-   },
-   {
     "do": "background"
    },
    {
@@ -558,6 +523,11 @@
   ],
   "expected": "The video still finishes after leaving and coming back.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "video"
@@ -586,20 +556,17 @@
     "near": "Video to a GIF"
    },
    {
-    "do": "tap",
-    "target": "Choose a video"
-   },
-   {
-    "do": "pick",
-    "kind": "video"
-   },
-   {
     "do": "wait",
     "seconds": 40
    }
   ],
   "expected": "A GIF is saved.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "gif"
@@ -679,6 +646,11 @@
   "expected": "A one-page PDF is saved.",
   "checks": [
    {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
+   {
     "oracle": "new_file",
     "arg": "pdf"
    },
@@ -720,6 +692,11 @@
   "expected": "The saved PDF is under 5 MB.",
   "checks": [
    {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
+   {
     "oracle": "new_file",
     "arg": "pdf"
    },
@@ -750,20 +727,17 @@
     "near": "Chipmunk voice"
    },
    {
-    "do": "tap",
-    "target": "Choose a recording"
-   },
-   {
-    "do": "pick",
-    "kind": "audio"
-   },
-   {
     "do": "wait",
     "seconds": 20
    }
   ],
   "expected": "A new recording is saved.",
   "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
    {
     "oracle": "new_file",
     "arg": "audio"

@@ -789,6 +789,15 @@ def pick_in_picker(adb, ui: dict, sleep, kind: str | None = None, front=None) ->
         named_txt = [(t, y, h, x1, x2) for t, y, h, x1, x2 in (ui.get("texts") or [])
                      if pref and t and pref.search(t.strip()) and not t.lower().startswith("preview")]
         drawer = [e for e in els if (e.get("text") or e.get("desc") or "").strip().lower() in ("show roots", "open navigation drawer")]
+        if not picked and not named_txt and pref:
+            # list/grid rows where the name only appears as the preview icon's label: tap the row beside the icon
+            icons = [e for e in els if (e.get("desc") or "").lower().startswith("preview the file")
+                     and pref.search((e.get("desc") or "")[len("preview the file"):].strip())]
+            if icons:
+                ic = sorted(icons, key=lambda e: (e["cy"], e["cx"]))[0]
+                adb.tap(min(ic["cx"] + 220, 680), ic["cy"]); sleep(1.5); picked = True
+                ui = parse_ui(adb.dump(), "")
+                continue
         if not picked and named_txt:
             t, y, h, x1, x2 = sorted(named_txt, key=lambda z: (z[1], z[3]))[0]
             adb.tap(int((x1 + x2) / 2), int(y + h / 2)); sleep(1.5); picked = True

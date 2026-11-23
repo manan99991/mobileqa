@@ -358,6 +358,7 @@ class Agent:
                               f"{shlex.quote(text or '')} -p {self.pkg}", timeout=40)
             return self._landed(out, f"Share this text to the app: “{text}”")
         coll, name, mime = self.SHARE_SEED.get(kind, self.SHARE_SEED["image"])
+        self.grant_media_read()
         base = "content://media/external/file" if coll == "file" else f"content://media/external/{coll}/media"
         q = self.adb.sh(f"content query --uri {base} --projection _id --where \"_display_name='{name}'\"")
         m = re.search(r"_id=(\d+)", q or "")
@@ -398,6 +399,16 @@ class Agent:
             if ".providers." not in p:
                 self.adb.sh(f"am force-stop {p}")
         self.adb.home(); self.sleep(1)
+
+    def grant_media_read(self):
+        """A Gallery share hands the receiving app read access to that one file. From the test shell we can't hand
+        out per-file access, so grant the read permissions the app itself declares - same outcome for the app."""
+        if getattr(self, "_granted", False):
+            return
+        self._granted = True
+        dump = self.adb.sh(f"dumpsys package {self.pkg} | grep -E 'android.permission.(READ_EXTERNAL_STORAGE|READ_MEDIA_[A-Z_]+)'") or ""
+        for perm in sorted(set(re.findall(r"android\.permission\.(?:READ_EXTERNAL_STORAGE|READ_MEDIA_[A-Z_]+)", dump))):
+            self.adb.sh(f"pm grant {self.pkg} {perm}")
 
     def _landed(self, out: str, how: str) -> tuple[bool, str]:
         """Android said ok — but is the app really in front now? Report exactly what happened if not."""
