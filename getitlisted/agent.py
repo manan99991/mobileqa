@@ -197,7 +197,8 @@ def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_te
         if not imgs:
             return "na", "No new photo to inspect."
         src = [f for f in ins if f["ext"] in ("jpg", "jpeg", "heic")]
-        src_gps = probe.exif_has_gps(src[-1]["path"]) if src else None
+        gps_flags = [probe.exif_has_gps(f["path"]) for f in src]
+        src_gps = True if any(gps_flags) else (False if gps_flags and all(g is False for g in gps_flags) else None)
         seeded_gps = any(x.get("gps") for x in (seed or {}).get("files", []))
         if not (src_gps or (not src and seeded_gps)):
             return "na", ("The input photo had no location in it" if src_gps is False else
@@ -250,7 +251,8 @@ def check(oracle: str, arg: str, facts: dict, probe: Probe, seed: dict, final_te
         if not data:
             return "na", "Could not read the video file."
         src = [f for f in ins if f["ext"] in exts]
-        sd = probe.read_bytes(src[-1]["path"]) if src else b""
+        sds = [probe.read_bytes(f["path"]) for f in src]
+        sd = next((x for x in sds if x and has_sound(x)), next((x for x in sds if x), b""))
         seeded_sound = any(x.get("kind") == "video" for x in (seed or {}).get("files", []))   # our seeded videos all carry a tone
         if src and sd and not has_sound(sd):
             return "na", "The input video had no sound to begin with, so this can't prove the sound was removed."
