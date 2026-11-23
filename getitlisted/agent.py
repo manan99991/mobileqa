@@ -372,9 +372,13 @@ class Agent:
         """The app really in front. Window focus lags on a cold start; Android's top resumed activity doesn't."""
         if self.ios:
             return self.adb.top_package()
+        # ground truth: the app that owns what is on screen, straight from the screen dump
+        pk = [p for p in re.findall(r'package="([^"]+)"', self.adb.dump() or "") if p not in ("com.android.systemui", "android")]
+        if pk:
+            return max(set(pk), key=pk.count)
         out = self.adb.sh("dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity'") or ""
         for key in ("topResumedActivity", "mResumedActivity"):
-            m = re.search(key + r"=ActivityRecord\{\S+ u\d+ ([\w.]+)/", out)
+            m = re.search(key + r"\s*[=:]\s*ActivityRecord\{\S+ u\d+ ([\w.]+)/", out)
             if m:
                 return m.group(1)
         return self.adb.top_package()

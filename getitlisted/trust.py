@@ -160,6 +160,28 @@ def main():
             continue
         kept.append(f)
 
+    # A freeze Android caught red-handed: its ANR dump shows the main thread busy in the app's OWN code.
+    # That is proof by itself (the freeze happened in the app), even if random taps didn't hit it twice.
+    # If the main thread was idle (waiting for messages), the device was just overloaded: not the app.
+    try:
+        stacks = json.loads((run / "anr.json").read_text())
+    except Exception:
+        stacks = []
+    have_freeze = any("not responding" in (k.get("title") or "").lower() or "froze" in (k.get("title") or "").lower() for k in kept)
+    for st in stacks:
+        top = (st.get("main_thread") or [""])[:8]
+        idle = any("nativePollOnce" in x for x in top[:2])
+        own_top = [x for x in st.get("app_frames") or [] if x in top]
+        if idle or not own_top or have_freeze:
+            if idle:
+                dropped.append({"title": "App not responding", "why": "main thread was idle in the dump: device overload, not the app"})
+            continue
+        kept.append({"category": "crash", "severity": "high", "title": "The app froze for over 5 seconds (Android recorded it)",
+                     "detail": "Android flagged the app as not responding: a tap waited more than 5 s because the main thread was busy in the app's own code.",
+                     "reproduction": "recorded-by-android", "reproduction_ratio": "1 freeze, stack captured",
+                     "evidence": {"app_frame": own_top[0], "stack": "\n".join(st["main_thread"][:25]), "exception": "ANR (Input dispatching timed out)"},
+                     "fix_text": "Move the work in the frames above off the main thread (a background coroutine/Dispatchers.IO), and keep the UI responsive while it runs."})
+        have_freeze = True
     (run / "findings.trusted.json").write_text(json.dumps(kept, indent=1))
     (run / "run_meta.json").write_text(json.dumps(
         {"status": "ok", "package": pkg, "platform": platform, "device": device,

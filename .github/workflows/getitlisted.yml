@@ -167,6 +167,13 @@ jobs:
           echo "video segments: $(ls /tmp/vid/*.mp4 2>/dev/null | wc -l)"
 
           adb logcat -d > "$RUN_DIR/logcat.txt" 2>/dev/null
+          # freezes (ANRs): keep Android's stack dump of what the app's main thread was doing
+          PKG="$GIL_PACKAGE"
+          if grep -q "ANR in $PKG" "$RUN_DIR/logcat.txt"; then
+            adb root >/dev/null 2>&1; sleep 3; adb wait-for-device
+            mkdir -p "$RUN_DIR/anr"; adb pull /data/anr "$RUN_DIR/anr" >/dev/null 2>&1 || true
+            python3 getitlisted/anr_stack.py "$RUN_DIR" "$PKG" || true
+          fi
           # release builds: turn obfuscated stack frames back into real class/line names
           if [ -s mapping.txt ] && command -v retrace >/dev/null; then
             retrace mapping.txt "$RUN_DIR/logcat.txt" > "$RUN_DIR/logcat.r.txt" 2>/dev/null && [ -s "$RUN_DIR/logcat.r.txt" ] \
