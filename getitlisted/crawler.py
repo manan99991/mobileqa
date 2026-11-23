@@ -932,6 +932,11 @@ def explore(adb: Adb | None = None, pkg: str | None = None, out_root: Path = Pat
     summary["declared"] = declared_surface(adb, pkg)
     (run / "findings.json").write_text(json.dumps(c.findings, indent=1))
     (run / "summary.json").write_text(json.dumps({"summary": summary}, indent=1))
+    if not summary.get("screens") and os.environ.get("GIL_VERBOSE") == "1":
+        ui = parse_ui(adb.dump(), pkg)
+        print("crawl diagnostics -> top:", adb.top_package(), "| on screen:", sorted(ui.get("pkgs") or []),
+              "| buttons:", [((e.get("text") or e.get("desc") or "")[:25], e["pkg"].split(".")[-1]) for e in ui["elements"]][:25],
+              "| texts:", [t for t, *_ in (ui.get("texts") or [])][:15])
     print(f"crawl done: {summary['screens']} screens, {summary['steps']} actions, "
           f"{len(c.findings)} raw findings, {len(c.integrations)} integration hand-offs")
     return run
