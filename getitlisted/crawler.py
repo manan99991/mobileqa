@@ -585,9 +585,13 @@ class Crawler:
         self._check_failures("opening the app", "Launch")
 
         back_streak = 0
+        self.skips = {}
+        def skip(why, detail=""):
+            k = self.skips.setdefault(why, [0, ""]); k[0] += 1; k[1] = k[1] or str(detail)[:160]
         while self.clock() - t_start < self.deadline_s:
             ui, settle = self._settle()
             if self._handle_system_dialogs(ui):
+                skip("system dialog answered", [(e.get("text"), e["pkg"]) for e in ui["elements"] if e["pkg"] != self.pkg][:4])
                 continue
             # what's on screen decides (window-focus readouts differ across Android versions and lag on cold starts)
             on_screen = (ui.get("pkgs") or set()) - {"com.android.systemui", "android", ""}
@@ -596,6 +600,7 @@ class Crawler:
             else:
                 top = self.adb.top_package()
             if top and top != self.pkg:
+                skip(f"other app in front: {top}", sorted(on_screen))
                 if top in PICKER_PKGS and self.path and self.picks < 12:
                     self.picks += 1
                     if pick_in_picker(self.adb, ui, self.sleep):
@@ -933,6 +938,7 @@ def explore(adb: Adb | None = None, pkg: str | None = None, out_root: Path = Pat
     (run / "findings.json").write_text(json.dumps(c.findings, indent=1))
     (run / "summary.json").write_text(json.dumps({"summary": summary}, indent=1))
     if not summary.get("screens") and os.environ.get("GIL_VERBOSE") == "1":
+        print("crawl skips ->", {k: v for k, v in (getattr(c, "skips", {}) or {}).items()})
         ui = parse_ui(adb.dump(), pkg)
         print("crawl diagnostics -> top:", adb.top_package(), "| on screen:", sorted(ui.get("pkgs") or []),
               "| buttons:", [((e.get("text") or e.get("desc") or "")[:25], e["pkg"].split(".")[-1]) for e in ui["elements"]][:25],
