@@ -23,5 +23,6 @@ jobs:
       app_name: Tenzy
       minutes: "20"
       agent_minutes: "55"
+      api_level: "34"
       plan_dir: getitlisted/tenzy/android_plan
     secrets: inherit

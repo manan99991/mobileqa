@@ -23,6 +23,7 @@ on:
       agent_minutes: { type: string, required: false, default: "" }
       plan_dir: { type: string, required: false, default: "" }
       seed:     { type: boolean, required: false, default: true }
+      api_level: { type: string, required: false, default: "30" }
   workflow_dispatch:
     inputs:
       build_id: { description: "builds.id to test", required: true }
@@ -120,15 +121,16 @@ jobs:
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
           export ANDROID_AVD_HOME="$HOME/.android/avd"; mkdir -p "$ANDROID_AVD_HOME"
           export GIL_MINUTES="${GIL_MINUTES:-12}"
-          yes | sdkmanager "system-images;android-30;google_apis;x86_64" >/dev/null 2>&1 && echo "image installed"
+          API_LEVEL="${{ inputs.api_level || '30' }}"
+          yes | sdkmanager "system-images;android-$API_LEVEL;google_apis;x86_64" >/dev/null 2>&1 && echo "image installed"
           echo no | avdmanager create avd --force --name qa \
-            --package "system-images;android-30;google_apis;x86_64" --device pixel_6 >/dev/null 2>&1
+            --package "system-images;android-$API_LEVEL;google_apis;x86_64" --device pixel_6 >/dev/null 2>&1
           emulator -list-avds | grep -qx qa || { echo "AVD creation FAILED"; exit 1; }
           nohup emulator -avd qa -no-window -no-audio -no-boot-anim \
             -gpu swiftshader_indirect -no-snapshot -netdelay none -netspeed full > emulator.log 2>&1 &
           timeout 180 adb wait-for-device
           booted=0
-          for i in $(seq 1 60); do
+          for i in $(seq 1 120); do
             [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && { echo "emulator booted"; booted=1; break; }
             sleep 5
           done
