@@ -342,6 +342,11 @@ def build(data):
     verdict = ("Looks ready — only polish left." if score >= 80 else
                "Close — fix the items marked P1 and P2 before launch." if score >= 55 else
                "Not ready — these issues would hurt real users.")
+    partial = not stats.get("screens")          # the exploration phase didn't run: no score, and say so
+    if partial:
+        score, sc = "—", "#8A8F98"
+        verdict = ("Partial run: the screen-by-screen exploration didn't run on this device, so there is no overall score. "
+                   "The functional tests below did run.")
     mins = max(1, round((stats.get("duration_s") or 0) / 60))
     crashes = [f for f in findings if f["kind"] in ("crash", "anr", "stress")]
     ver = " ".join(x for x in [app.get("version_name") and f'v{app["version_name"]}',
@@ -356,7 +361,7 @@ def build(data):
     hero = f'''<section class="hero">
       <div class="who">{icon}<div><div class="eyebrow">QA report for</div><h1>{e(app_name)}</h1>
         <div class="meta">{e(app.get("package") or "")}{" · " + e(ver) if ver else ""} · {e(platform)} · tested {e(data.get("run_at"))}</div></div></div>
-      <div class="score"><div class="ring" style="--p:{score};--c:{sc}"><b>{score}</b><span>of 100</span></div>
+      <div class="score"><div class="ring" style="--p:{0 if partial else score};--c:{sc}"><b>{score}</b><span>{"no score" if partial else "of 100"}</span></div>
         <div><div class="verdict">{e(verdict)}</div>
         <div class="pills">{"".join(f'<span class="sp" style="color:{SEV[k][1]};background:{SEV[k][2]}">{counts[k]} {SEV[k][0].lower()}</span>' for k in SEV_ORDER if counts.get(k))}</div>
         <div class="heroact">{('<a class="btn" href="#issues">See the ' + str(len(findings)) + ' issues</a>') if findings else ''}

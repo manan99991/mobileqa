@@ -100,8 +100,13 @@ class Adb:
             path.write_bytes(data)
 
     def top_package(self) -> str:
+        # the resumed activity is the most reliable answer on Android 10-15; window focus is the fallback
+        act = self.sh("dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity'") or ""
+        m = re.search(r"(?:topResumedActivity|mResumedActivity)\s*[=:]\s*ActivityRecord\{\S+ u\d+ ([\w.]+)/", act)
+        if m:
+            return m.group(1)
         out = self.sh("dumpsys window | grep -E 'mCurrentFocus|mFocusedApp'")
-        m = re.search(r"\s([a-zA-Z0-9_.]+)/[a-zA-Z0-9_.$]+", out)
+        m = re.search(r"mCurrentFocus=Window\{\S+ u\d+ ([\w.]+)/", out) or re.search(r"\s([a-zA-Z0-9_.]+)/[a-zA-Z0-9_.$]+", out)
         return m.group(1) if m else ""
 
     def top_activity(self) -> str:
@@ -584,7 +589,12 @@ class Crawler:
             ui, settle = self._settle()
             if self._handle_system_dialogs(ui):
                 continue
-            top = self.adb.top_package()
+            # what's on screen decides (window-focus readouts differ across Android versions and lag on cold starts)
+            on_screen = (ui.get("pkgs") or set()) - {"com.android.systemui", "android", ""}
+            if self.pkg in on_screen and not (on_screen & (set(PICKER_PKGS) | set(PERMISSION_PKGS))):
+                top = self.pkg
+            else:
+                top = self.adb.top_package()
             if top and top != self.pkg:
                 if top in PICKER_PKGS and self.path and self.picks < 12:
                     self.picks += 1

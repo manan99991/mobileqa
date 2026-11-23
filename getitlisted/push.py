@@ -137,7 +137,7 @@ def main():
     sev = [f["severity"] for f in data["findings"]]
     row = {
         "app_key": APP_KEY, "platform": PLATFORM, "run_id": RUN_ID,
-        "score": report.readiness(data["findings"]),
+        "score": report.readiness(data["findings"]) if (data.get("stats") or {}).get("screens") else -1,
         "critical": sev.count("critical"), "high": sev.count("high"),
         "medium": sev.count("medium"), "low": sev.count("low"),
         "issues": len(data["findings"]), "report_url": report_url, "status": "ready",
