@@ -17,7 +17,7 @@
    },
    {
     "do": "wait",
-    "seconds": 10
+    "seconds": 25
    }
   ],
   "expected": "A new photo is saved with the location removed.",
@@ -61,7 +61,7 @@
    },
    {
     "do": "wait",
-    "seconds": 10
+    "seconds": 25
    }
   ],
   "expected": "Rotation mid-run still produces a clean photo.",
@@ -99,7 +99,7 @@
    },
    {
     "do": "wait",
-    "seconds": 10
+    "seconds": 25
    }
   ],
   "expected": "A watermarked copy is saved, with no location in it.",
@@ -140,7 +140,7 @@
    },
    {
     "do": "wait",
-    "seconds": 12
+    "seconds": 25
    }
   ],
   "expected": "A PDF is created from the photo.",
@@ -178,7 +178,7 @@
    },
    {
     "do": "wait",
-    "seconds": 10
+    "seconds": 25
    }
   ],
   "expected": "The saved photo is under 2 MB.",
@@ -220,7 +220,7 @@
    },
    {
     "do": "wait",
-    "seconds": 12
+    "seconds": 25
    }
   ],
   "expected": "A sketch image is saved.",

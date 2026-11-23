@@ -708,6 +708,11 @@ class Agent:
             res.update({"verdict": "fail", "actual": "The app crashed during this test.", "severity": "critical", "confidence": 1.0})
             return res
         pre_fail = [x for x in res["checks"] if x.get("pre") and x["status"] == "fail"]
+        if pre_fail and not crashed and not self.ios and os.environ.get("GIL_VERBOSE") == "1":
+            seedf = self.adb.sh("ls -l /sdcard/DCIM/Camera /sdcard/Pictures 2>/dev/null | grep -i IMG_20261110 | head -3")
+            lg = self.adb.sh("logcat -d -v brief -t 600", timeout=40) or ""
+            keep = [l for l in lg.splitlines() if re.search(r"SecurityException|FileNotFound|decode|Permission|Denial|" + re.escape(self.pkg), l)]
+            print("agent: open diagnostics ->", " ".join(seedf.split())[:200], "\n  " + "\n  ".join(keep[-15:]))
         if pre_fail and not crashed:
             blocked = blocked + ["The screen this test needs never appeared (" + pre_fail[0]["evidence"] + ")"]
         res["checks"] = [x for x in res["checks"] if not x.get("pre")]
