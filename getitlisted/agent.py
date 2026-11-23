@@ -393,7 +393,11 @@ class Agent:
             if self.front_package() in PICKER_PKGS:
                 self.adb.back(); self.sleep(1)
             else:
-                break
+                return
+        for p in PICKER_PKGS:                 # UI apps only: never the media/storage providers
+            if ".providers." not in p:
+                self.adb.sh(f"am force-stop {p}")
+        self.adb.home(); self.sleep(1)
 
     def _landed(self, out: str, how: str) -> tuple[bool, str]:
         """Android said ok — but is the app really in front now? Report exactly what happened if not."""
@@ -581,7 +585,12 @@ class Agent:
                     if self.front_package() in PICKER_PKGS:
                         break
                 if self.front_package() in PICKER_PKGS:
-                    ok = pick_in_picker(self.adb, parse_ui(self.adb.dump(), ""), self.sleep, st.get("kind"))
+                    pui = parse_ui(self.adb.dump(), "")
+                    ok = pick_in_picker(self.adb, pui, self.sleep, st.get("kind"), front=self.front_package)
+                    if not ok and os.environ.get("GIL_VERBOSE") == "1":
+                        now = parse_ui(self.adb.dump(), "")
+                        print(f"agent: picker diagnostics ({self.front_package()}) ->",
+                              [((e.get("text") or e.get("desc") or "")[:30], (e.get("rid") or "").split("/")[-1]) for e in now["elements"]][:40])
                     self.sleep(2)
                     if ok and self.app_in_front():
                         human.append(f'Pick a sample {st.get("kind", "file")} in the picker')

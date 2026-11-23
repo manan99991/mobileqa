@@ -760,18 +760,29 @@ PICK_PREFER = {"image": re.compile(r"^IMG_|\.jpe?g$", re.I), "video": re.compile
                "pdf": re.compile(r"\.pdf$|invoice", re.I)}
 
 
-def pick_in_picker(adb, ui: dict, sleep, kind: str | None = None) -> bool:
+PICK_ROOT_FOR = {"image": re.compile(r"^(images|pictures|camera|downloads?|recent)$", re.I),
+                 "video": re.compile(r"^(videos|movies|downloads?|recent)$", re.I),
+                 "audio": re.compile(r"^(audio|music|recordings|downloads?|recent)$", re.I),
+                 "pdf": re.compile(r"^(documents|downloads?|recent)$", re.I),
+                 "document": re.compile(r"^(documents|downloads?|recent)$", re.I)}
+
+
+def pick_in_picker(adb, ui: dict, sleep, kind: str | None = None, front=None) -> bool:
     """In a system file/photo/contact picker: open a sensible folder if needed, pick the first
     item, then confirm (multi-select pickers). Same logic in crawl and replay, so picks are reproducible."""
     picked = False
-    for _ in range(5):
-        if adb.top_package() not in PICKER_PKGS:
-            return True                      # picker closed: the app got the file
+    front = front or adb.top_package
+    root_re = PICK_ROOT_FOR.get(kind or "", PICK_ROOT_RE)
+    tried_roots = set()
+    for _ in range(7):
+        if front() not in PICKER_PKGS:
+            return picked                    # picker closed: the app got the file (only if we picked one)
         els = ui["elements"]
         ok = [e for e in els if PICK_OK_RE.match((e.get("text") or "").strip())]
         items = [e for e in els if PICK_ITEM_RE.search(e.get("rid") or "") and not e["editable"]
                  and (e["bounds"][3] - e["bounds"][1]) > 60]
-        roots = [e for e in els if PICK_ROOT_RE.match((e.get("text") or "").strip())]
+        # never "Photos"/"Gallery": inside the file picker those launch another app instead of a folder
+        roots = [e for e in els if root_re.match((e.get("text") or "").strip()) and (e.get("text") or "").strip().lower() not in tried_roots]
         if picked and ok:
             tgt = ok[0]
         elif items and not picked:
@@ -779,14 +790,14 @@ def pick_in_picker(adb, ui: dict, sleep, kind: str | None = None) -> bool:
             named = [e for e in els if pref and pref.search((e.get("text") or e.get("desc") or "").strip())] if pref else []
             tgt = sorted(named or items, key=lambda e: (e["cy"], e["cx"]))[0]; picked = True
         elif roots and not picked:
-            tgt = roots[0]
+            tgt = roots[0]; tried_roots.add((tgt.get("text") or "").strip().lower())
         elif ok:
             tgt = ok[0]
         else:
             return False
         adb.tap(tgt["cx"], tgt["cy"]); sleep(1.5)
         ui = parse_ui(adb.dump(), "")
-    return adb.top_package() not in PICKER_PKGS
+    return picked and front() not in PICKER_PKGS
 
 
 # ───────────────────────────── replay (reproduce) ─────────────────────────────
