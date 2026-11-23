@@ -30,13 +30,21 @@ def jpeg_with_gps(path: Path, i: int):
     d = ImageDraw.Draw(im)
     d.ellipse([500, 300, 1100, 900], fill=(255, 201, 60))
     d.text((60, 60), f"Test photo {i + 1}", fill="white")
-    exif = Image.Exif()
-    exif[0x010F] = "Google"            # Make
-    exif[0x0110] = "Pixel 6"           # Model
-    exif[0x0132] = f"2026:11:{10 + i:02d} 10:2{i}:00"
-    gps = {1: "N", 2: (41.0, 52.0, 42.0 + i), 3: "W", 4: (87.0, 37.0, 25.0 + i)}  # near Chicago
-    exif[0x8825] = gps
-    im.save(path, "JPEG", quality=88, exif=exif)
+    try:   # camera-standard EXIF layout (what phones write); Android's location redaction parses it reliably
+        import piexif
+        r = lambda v: (int(round(v * 100)), 100)
+        exif = piexif.dump({"0th": {piexif.ImageIFD.Make: b"Google", piexif.ImageIFD.Model: b"Pixel 6",
+                                    piexif.ImageIFD.DateTime: f"2026:11:{10 + i:02d} 10:2{i}:00".encode()},
+                            "Exif": {piexif.ExifIFD.DateTimeOriginal: f"2026:11:{10 + i:02d} 10:2{i}:00".encode()},
+                            "GPS": {piexif.GPSIFD.GPSVersionID: (2, 3, 0, 0),
+                                    piexif.GPSIFD.GPSLatitudeRef: b"N", piexif.GPSIFD.GPSLatitude: (r(41), r(52), r(42 + i)),
+                                    piexif.GPSIFD.GPSLongitudeRef: b"W", piexif.GPSIFD.GPSLongitude: (r(87), r(37), r(25 + i))}})
+        im.save(path, "JPEG", quality=88, exif=exif)
+    except ImportError:
+        exif = Image.Exif()
+        exif[0x010F] = "Google"; exif[0x0110] = "Pixel 6"
+        exif[0x8825] = {1: "N", 2: (41.0, 52.0, 42.0 + i), 3: "W", 4: (87.0, 37.0, 25.0 + i)}  # near Chicago
+        im.save(path, "JPEG", quality=88, exif=exif)
 
 
 def tiny_pdf() -> bytes:

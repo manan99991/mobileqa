@@ -138,7 +138,7 @@ jobs:
           echo "app installed"
           if [ "${{ inputs.seed != false }}" = "true" ]; then
             (command -v ffmpeg >/dev/null || sudo apt-get install -y -qq ffmpeg >/dev/null 2>&1)
-            pip install -q pillow >/dev/null 2>&1
+            pip install -q pillow piexif >/dev/null 2>&1
             timeout 6m python getitlisted/seed_device.py || echo "seeding incomplete"
           fi
 
@@ -195,7 +195,8 @@ jobs:
           echo "== reproduce pass =="
           timeout 12m python getitlisted/crawler.py replay "$RUN_DIR" 3 >/dev/null 2>&1
           echo "reproduce exit $?"
-          GIL_RUN_DIR="$RUN_DIR" python getitlisted/trust.py | head -1
+          GIL_RUN_DIR="$RUN_DIR" python getitlisted/trust.py | grep -E "^trust gate|^  dropped: (App not responding|The app froze)" | head -4
+          [ "$GIL_VERBOSE" = "1" ] && [ -f "$RUN_DIR/anr.json" ] && python3 -c "import json,sys;[print(\"freeze stack:\", x[\"main_thread\"][:6]) for x in json.load(open(sys.argv[1]))]" "$RUN_DIR/anr.json" || true
           if [ "$GIL_SMOKE" = "1" ]; then
             python3 -c "import json,sys;d=sys.argv[1];s=json.load(open(d+'summary.json'))['summary'];print('screens',s['screens'],'actions',s['steps'],'perf',json.dumps(s.get('performance')));[print('FINDING',f['severity'],f['category'],f['title'],'|',f.get('reproduction','')) for f in json.load(open(d+'findings.trusted.json'))]" "$RUN_DIR"
             exit 0
