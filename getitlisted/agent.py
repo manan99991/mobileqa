@@ -679,7 +679,7 @@ class Agent:
                                       if ok else (ck.get("why_fail") or (f"The result screen never appeared" if len(alts) > 1 else f"\u201c{ck.get('arg')}\u201d" + (f" with \u201c{lab}\u201d" if lab else "") + " never appeared"))})
                 continue
             stt, ev = check(ck.get("oracle", ""), ck.get("arg", ""), facts, self.probe, self.seed, final_texts, changed)
-            if stt != "na":
+            if stt != "na" or ev:   # "can't tell" is kept and shown, never counted as a pass or a fail
                 res["checks"].append({"oracle": ck.get("oracle"), "arg": ck.get("arg", ""), "status": stt, "evidence": ev, "pre": bool(ck.get("pre"))})
         res.update({"steps_done": human, "blocked": blocked, "before": before_shot, "after": after_shot,
                     "facts": {k: v for k, v in facts.items() if v}, "crashed": crashed, "trail": trail,
@@ -687,7 +687,7 @@ class Agent:
         if crashed:
             res.update({"verdict": "fail", "actual": "The app crashed during this test.", "severity": "critical", "confidence": 1.0})
             return res
-        pre_fail = [x for x in res["checks"] if x.get("pre") and x["status"] != "pass"]
+        pre_fail = [x for x in res["checks"] if x.get("pre") and x["status"] == "fail"]
         if pre_fail and not crashed:
             blocked = blocked + ["The screen this test needs never appeared (" + pre_fail[0]["evidence"] + ")"]
         res["checks"] = [x for x in res["checks"] if not x.get("pre")]
