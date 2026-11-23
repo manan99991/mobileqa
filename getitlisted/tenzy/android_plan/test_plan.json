@@ -820,5 +820,81 @@
    }
   ],
   "severity": "high"
+ },
+ {
+  "id": "TC22",
+  "feature_id": "F15",
+  "title": "Turn a shared screenshot into a pencil sketch",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "share_in",
+    "kind": "screenshot"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Photo to a pencil sketch"
+   },
+   {
+    "do": "wait",
+    "seconds": 25
+   }
+  ],
+  "expected": "A sketch image is saved.",
+  "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
+ },
+ {
+  "id": "TC23",
+  "feature_id": "F15",
+  "title": "Turn a shared photo with no location into a pencil sketch",
+  "type": "happy",
+  "entry_screen": "launch",
+  "steps": [
+   {
+    "do": "share_in",
+    "kind": "image_nogps"
+   },
+   {
+    "do": "tap",
+    "target": "Run",
+    "near": "Photo to a pencil sketch"
+   },
+   {
+    "do": "wait",
+    "seconds": 25
+   }
+  ],
+  "expected": "A sketch image is saved.",
+  "checks": [
+   {
+    "oracle": "text_not_on_screen",
+    "arg": "couldn't be opened",
+    "pre": true
+   },
+   {
+    "oracle": "new_file",
+    "arg": "image"
+   },
+   {
+    "oracle": "no_app_error_logged"
+   }
+  ],
+  "severity": "high"
  }
 ]

@@ -101,6 +101,10 @@ def main():
             p = tmp / f"IMG_202611{10 + i:02d}_10{i}000.jpg"; jpeg_with_gps(p, i)
             adb("push", str(p), "/sdcard/DCIM/Camera/"); n += 1
         from PIL import Image, ImageDraw
+        # one plain JPEG with no location: tells "the photo has GPS" problems apart from "it's a JPEG" problems
+        p = tmp / "IMG_20261109_090000.jpg"
+        Image.new("RGB", (1600, 1200), (70, 120, 90)).save(p, "JPEG", quality=88)
+        adb("push", str(p), "/sdcard/DCIM/Camera/"); n += 1
         for i in range(4):
             p = tmp / f"Screenshot_202611{18 + i}-0930{i}0.png"
             im = Image.new("RGB", (1080, 2400), (245, 245, 250)); ImageDraw.Draw(im).text((60, 120), f"Screenshot {i + 1}", fill="black")

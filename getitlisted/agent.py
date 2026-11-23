@@ -348,7 +348,9 @@ class Agent:
     SHARE_SEED = {"image": ("images", "IMG_20261110_100000.jpg", "image/jpeg"),
                   "video": ("video", "VID_20261120_101500.mp4", "video/mp4"),
                   "audio": ("audio", "Voice memo 1.m4a", "audio/mp4"),
-                  "pdf": ("file", "Invoice_1042.pdf", "application/pdf")}
+                  "pdf": ("file", "Invoice_1042.pdf", "application/pdf"),
+                  "screenshot": ("images", "Screenshot_20261118-093000.png", "image/png"),
+                  "image_nogps": ("images", "IMG_20261109_090000.jpg", "image/jpeg")}
 
     def share_in(self, kind: str, text: str | None = None) -> tuple[bool, str]:
         """Share a sample file (or text) into the app the way a person does from Gallery/Files: Android's Share sheet."""
