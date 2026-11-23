@@ -190,7 +190,7 @@ def parse_ui(xml: str, pkg: str) -> dict:
             continue
         x1, y1, x2, y2 = map(int, m.groups())
         t = (n.get("text") or "").strip()
-        if t and p == pkg:
+        if t and (not pkg or p == pkg):
             texts.append((t, y1, y2 - y1, x1, x2))
         if x2 - x1 < 2 or y2 - y1 < 2:
             continue
@@ -783,10 +783,22 @@ def pick_in_picker(adb, ui: dict, sleep, kind: str | None = None, front=None) ->
                  and (e["bounds"][3] - e["bounds"][1]) > 60]
         # never "Photos"/"Gallery": inside the file picker those launch another app instead of a folder
         roots = [e for e in els if root_re.match((e.get("text") or "").strip()) and (e.get("text") or "").strip().lower() not in tried_roots]
+        pref = PICK_PREFER.get(kind or "")
+        # file names are often plain text on the tile (the tappable bit is a "preview" icon that only previews):
+        # tapping the name picks the file
+        named_txt = [(t, y, h, x1, x2) for t, y, h, x1, x2 in (ui.get("texts") or [])
+                     if pref and t and pref.search(t.strip()) and not t.lower().startswith("preview")]
+        drawer = [e for e in els if (e.get("text") or e.get("desc") or "").strip().lower() in ("show roots", "open navigation drawer")]
+        if not picked and named_txt:
+            t, y, h, x1, x2 = sorted(named_txt, key=lambda z: (z[1], z[3]))[0]
+            adb.tap(int((x1 + x2) / 2), int(y + h / 2)); sleep(1.5); picked = True
+            ui = parse_ui(adb.dump(), "")
+            continue
         if picked and ok:
             tgt = ok[0]
+        elif not picked and not roots and drawer and "drawer" not in tried_roots:
+            tgt = drawer[0]; tried_roots.add("drawer")       # folders (Audio, Downloads…) live in the side drawer
         elif items and not picked:
-            pref = PICK_PREFER.get(kind or "")
             named = [e for e in els if pref and pref.search((e.get("text") or e.get("desc") or "").strip())] if pref else []
             tgt = sorted(named or items, key=lambda e: (e["cy"], e["cx"]))[0]; picked = True
         elif roots and not picked:
